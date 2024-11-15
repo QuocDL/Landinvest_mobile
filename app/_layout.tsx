@@ -8,7 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import Colors from '@/constants/Colors';
-
+import "@/global.css";
 import { MenuProvider } from 'react-native-popup-menu';
 
 export {

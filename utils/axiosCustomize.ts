@@ -3,7 +3,7 @@ import useAuthStore from '@/store/authStore';
 import { router } from 'expo-router';
 
 const instance = axios.create({
-    baseURL: `https://apilandinvest.gachmen.org`,
+    baseURL: `https://api.quyhoach.xyz`,
    
 });
 
@@ -61,7 +61,7 @@ instance.interceptors.response.use(
 
         if (error.response && error.response.status === 400 && originalConfig.url.includes('/refresh_token/')) {
             useAuthStore.getState().clearAuthState();
-            router.navigate('/(modals)/auth/')
+            router.navigate('/(modals)/auth')
         }
 
         return Promise.reject(error.response ? error.response.data : error);

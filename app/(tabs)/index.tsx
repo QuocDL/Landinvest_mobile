@@ -75,14 +75,16 @@ const Page = () => {
     return (
         <View className="flex-1 justify-center items-center relative">
             <StatusBar style="light" />
-            <Map opacity={opacity} lat={lat} lon={lon} setLocationInfo={setLocationInfo} locationInfo={locationInfo} />
-            <View className=" w-full absolute bottom-0 left-0 py-1" style={{ backgroundColor: Colors.primary.header }}>
+            <Map setLocationInfo={setLocationInfo}/>
+            <View className=" w-full absolute bottom-0 left-0 pb-2 pt-1" style={{ backgroundColor: Colors.primary.header }}>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} className="space-x-2 ">
                     <View
                         className="h-full min-w-[300px] bg-[#D9D9D9] rounded-3xl flex flex-row items-center justify-center space-x-2 px-2">
                         <MapLocationIcon />
                         <Text className="flex-1 font-normal text-sm">
-                            {locationInfo?.administrativeArea}, {locationInfo?.subAdministrativeArea}
+                            {locationInfo?.administrativeArea === '(null)' && locationInfo.subAdministrativeArea === '(null)' && 'Không có dữ liệu'}
+                            {locationInfo?.administrativeArea !== '(null)' && locationInfo?.administrativeArea}
+                            {locationInfo?.subAdministrativeArea !== '(null)' && ', ' + locationInfo?.subAdministrativeArea}
                         </Text>
                     </View>
                     {renderYearButtons}
@@ -113,8 +115,8 @@ const Page = () => {
             </View>
 
 
-            <BottomSheet dismiss={dismiss} ref={sheetRef} />
-            <BottomSheetQuyHoach dismiss={handleBottomSheetQuyHoachDismiss} ref={sheetQuyHoachRef} />
+            {/* <BottomSheet dismiss={dismiss} ref={sheetRef} />
+            <BottomSheetQuyHoach dismiss={handleBottomSheetQuyHoachDismiss} ref={sheetQuyHoachRef} /> */}
         </View>
     );
 };
