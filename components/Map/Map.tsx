@@ -101,6 +101,7 @@ const Map = ({ setLocationInfo }: IMapsPropsType) => {
         }
     };
     const handlePressMap = async (e: MapPressEvent) => {
+       try {
         setLoadingGlobal(true);
         const { latitude, longitude } = e.nativeEvent.coordinate;
         const data = await addressForCoordinate(latitude, longitude);
@@ -111,6 +112,10 @@ const Map = ({ setLocationInfo }: IMapsPropsType) => {
         });
         moveToLocation(latitude, longitude);
         setLoadingGlobal(false);
+       } catch (error) {
+        setLoadingGlobal(false);
+        Alert.alert('Thao tác quá nhanh vui lòng thử lại!')
+       }
     };
     const handleDoublePress = (e: ClickEvent) => {
         e.preventDefault()
