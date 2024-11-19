@@ -1,18 +1,23 @@
 import { CheckpointsIcon, RecyclebinIcon } from '@/assets/icons';
+import { LocationData } from '@/constants/interface';
+import useMarkerStore from '@/store/quyhoachStore';
+import useSearchStore from '@/store/searchStore';
 import { requestLocationPermission } from '@/utils/Permission';
 import { Feather } from '@expo/vector-icons';
 import SimpleLineIcons from '@expo/vector-icons/SimpleLineIcons';
 import { Divider } from '@rneui/themed';
+import axios from 'axios';
+import * as Location from 'expo-location';
 import React, { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Image, StyleSheet, TouchableOpacity, View } from 'react-native';
-import MapView, { ClickEvent, MapPressEvent, Marker, Region } from 'react-native-maps';
-import * as Location from 'expo-location';
-import useSearchStore from '@/store/searchStore';
-import { LocationData } from '@/constants/interface';
+import MapView, { ClickEvent, MapPressEvent, Marker, Region, UrlTile } from 'react-native-maps';
+import { tags } from 'react-native-svg/lib/typescript/xmlTags';
+import removeAccents from 'remove-accents';
 type IMapsPropsType = {
     setLocationInfo: (data: LocationData) => void;
+    opacity: number;
 };
-const Map = ({ setLocationInfo }: IMapsPropsType) => {
+const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
     // Ref element
     const mapRef = useRef<MapView>(null);
     // CustomHook with Ref
@@ -25,8 +30,11 @@ const Map = ({ setLocationInfo }: IMapsPropsType) => {
     };
     // searchStore State
     const { lat, lon } = useSearchStore((state) => state);
-    // SearStore Dispatch
-
+    const selectedIdDistrict = useSearchStore((state) => state.districtId);
+    // SearchStore Dispatch
+    const doSetDistrictId = useSearchStore((state) => state.doSetDistrictId);
+    const doSetPlanningList = useMarkerStore((state) => state.doSetPlanningList);
+    const doRemovePlanningList = useMarkerStore((state) => state.doRemovePlanningList);
     // MapState
     const [location, setLocation] = useState({
         latitude: 21.16972,
@@ -38,6 +46,8 @@ const Map = ({ setLocationInfo }: IMapsPropsType) => {
         latitudeDelta: 0.1,
         longitudeDelta: 0.1,
     });
+    const [districtName, setDistrictName] = useState<string | null>(null);
+    const [idQueryMaps, setIdQueryMap] = useState<string | null>(null);
     // Loading State
     const [loadingGoToUser, setLoadingGoToUser] = useState<boolean>(false);
     const [loadingGlobal, setLoadingGlobal] = useState<boolean>(false);
@@ -45,9 +55,15 @@ const Map = ({ setLocationInfo }: IMapsPropsType) => {
     const onMoveMapEnd = async (newRegion: Region) => {
         const { latitude, longitude } = newRegion;
         if (mapRef.current) {
+            setLoadingGlobal(true);
             const data = await addressForCoordinate(latitude, longitude);
+            if (data?.subAdministrativeArea) {
+                setDistrictName(data?.subAdministrativeArea || '');
+                setLoadingGlobal(false);
+            }
             if (data) {
                 setLocationInfo(data as LocationData);
+                setLoadingGlobal(false);
             }
         }
     };
@@ -101,28 +117,61 @@ const Map = ({ setLocationInfo }: IMapsPropsType) => {
         }
     };
     const handlePressMap = async (e: MapPressEvent) => {
-       try {
-        setLoadingGlobal(true);
-        const { latitude, longitude } = e.nativeEvent.coordinate;
-        const data = await addressForCoordinate(latitude, longitude);
-        setLocationInfo(data as LocationData);
-        setLocation({
-            latitude,
-            longitude,
-        });
-        moveToLocation(latitude, longitude);
-        setLoadingGlobal(false);
-       } catch (error) {
-        setLoadingGlobal(false);
-        Alert.alert('Thao tác quá nhanh vui lòng thử lại!')
-       }
+        try {
+            const { latitude, longitude } = e.nativeEvent.coordinate;
+            const data = await addressForCoordinate(latitude, longitude);
+            setLocationInfo(data as LocationData);
+            setLocation({
+                latitude,
+                longitude,
+            });
+            moveToLocation(latitude, longitude);
+            setLoadingGlobal(false);
+        } catch (error) {
+            setLoadingGlobal(false);
+            Alert.alert('Thao tác quá nhanh vui lòng thử lại!');
+        }
     };
-    const handleDoublePress = (e: ClickEvent) => {
-        e.preventDefault()
-        console.log('handle Double click');
+    const handleDoublePress = async (e: ClickEvent) => {
+        if (loadingGlobal) {
+            Alert.alert('Chưa lấy được vị trí hiện tại vui lòng thử lại.');
+        } else {
+            if (!selectedIdDistrict) {
+                const { data: dataQuyHoach } = await axios.get(
+                    `https://api.quyhoach.xyz/quyhoach1quan/${idQueryMaps}`,
+                );
+                if (dataQuyHoach.length) {
+                    doSetPlanningList(dataQuyHoach);
+                    doSetDistrictId(dataQuyHoach[0].id);
+                }
+                if (!dataQuyHoach) {
+                    doSetDistrictId(null);
+                }
+            } else {
+                doSetDistrictId(null);
+                doRemovePlanningList();
+            }
+        }
     };
     // Effect Function
-
+    useEffect(() => {
+        const getIdDistrictData = async () => {
+            if (districtName) {
+                const apiNameDistrict = removeAccents(districtName.toLowerCase()).split('.').pop();
+                const { data: getIdDistrict } = await axios.get(
+                    `https://api.quyhoach.xyz/quyhoach/search/${apiNameDistrict}`,
+                );
+                if (getIdDistrict.Posts[0]) {
+                    setIdQueryMap(getIdDistrict.Posts[0].idDistrict);
+                }else{
+                    setIdQueryMap(null)
+                }
+            }else{
+                setIdQueryMap(null)
+            }
+        };
+        getIdDistrictData();
+    }, [districtName]);
     // Memo function
     useMemo(() => {
         if (lat !== 0 && lon !== 0) {
@@ -151,6 +200,16 @@ const Map = ({ setLocationInfo }: IMapsPropsType) => {
                         style={{ width: 40, height: 40, resizeMode: 'contain' }}
                     />
                 </Marker>
+
+                {selectedIdDistrict && (
+                    <UrlTile
+                        urlTemplate={`https://api.quyhoach.xyz/get_api_quyhoach/${selectedIdDistrict}/{z}/{x}/{y}`}
+                        maximumZ={22}
+                        opacity={opacity}
+                        offlineMode
+                        zIndex={-2}
+                    />
+                )}
             </MapView>
             {loadingGlobal && (
                 <View className="absolute  flex flex-row bottom-14 left-2 items-start w-screen">

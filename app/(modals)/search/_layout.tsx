@@ -11,7 +11,7 @@ const SearchLayout = () => {
 
     const debouncedSearch = useDebouncedCallback((value) => {
         doSearch(value);
-    }, 300);
+    }, 1000);
 
     return (
         <Stack>

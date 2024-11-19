@@ -1,35 +1,34 @@
-import React, { useCallback, useRef, useState, useMemo } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
-import { Button, Divider } from '@rneui/themed';
 import Feather from '@expo/vector-icons/Feather';
-import { BottomSheetModal, useBottomSheetModal } from '@gorhom/bottom-sheet';
-import { useSharedValue } from 'react-native-reanimated';
+import { BottomSheetModal } from '@gorhom/bottom-sheet';
+import { Button } from '@rneui/themed';
+import { StatusBar } from 'expo-status-bar';
+import React, { useCallback, useRef, useState } from 'react';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Slider } from 'react-native-awesome-slider';
+import { useSharedValue } from 'react-native-reanimated';
 
+import { DollarIcon, MapLocationIcon } from '@/assets/icons';
 import Map from '@/components/Map/Map';
-import BottomSheet from '@/components/ui/BottomSheet';
-import BottomSheetQuyHoach from '@/components/ui/BottomSheetQuyHoach';
-import { CheckpointsIcon, DollarIcon, MapLocationIcon, RecyclebinIcon } from '@/assets/icons';
 import Colors from '@/constants/Colors';
+import { LocationData, QuyHoachResponse } from '@/constants/interface';
+import useMarkerStore from '@/store/quyhoachStore';
 import useSearchStore from '@/store/searchStore';
-import { LocationData } from '@/constants/interface';
-import SimpleLineIcons from '@expo/vector-icons/SimpleLineIcons';
-
-const YEAR_QUY_HOACH = ['Quy Hoạch 2024', 'Quy hoạch 2030', 'Quy hoạch khác'];
+import useModalStore from '@/store/modalStore';
 
 const Page = () => {
-    const [activeYear, setActiveYear] = useState(0);
     const [opacity, setOpacity] = useState(1);
     const [locationInfo, setLocationInfo] = useState<LocationData | null>(null);
-    const { dismiss } = useBottomSheetModal();
     const sheetRef = useRef<BottomSheetModal>(null);
     const sheetQuyHoachRef = useRef<BottomSheetModal>(null);
     const progress = useSharedValue(1);
     const min = useSharedValue(0);
     const max = useSharedValue(1);
-
-    const { lat, lon } = useSearchStore((state) => state);
+    const doSetDistrictId = useSearchStore((state) => state.doSetDistrictId);
+    const planningList = useMarkerStore((state) => state.planningList);
+    const idDistrict = useSearchStore((state) => state.districtId);
+    // Modal state
+    const doSetOpenModalPlanning = useModalStore(state=> state.doOpenModalPlanningList)
+    const isOpenModalPlanning = useModalStore(state=> state.modalPlanningList)
 
     const openBottomSheet = useCallback(() => {
         sheetRef.current?.present();
@@ -39,33 +38,16 @@ const Page = () => {
         sheetQuyHoachRef.current?.present();
     }, []);
 
-    const handleBottomSheetQuyHoachDismiss = useCallback(() => {
-        setActiveYear(0);
-        sheetQuyHoachRef.current?.dismiss();
-    }, []);
+    // const handleBottomSheetQuyHoachDismiss = useCallback(() => {
+    //     setActiveYear(0);
+    //     sheetQuyHoachRef.current?.dismiss();
+    // }, []);
 
     const handleQuyHoach = useCallback(
-        (index: number) => {
-            setActiveYear(index);
-            if (index === 2) {
-                openBottomSheetQuyHoach();
-            }
+        (data: QuyHoachResponse) => {
+            doSetDistrictId(data.id);
         },
         [openBottomSheetQuyHoach],
-    );
-
-    const renderYearButtons = useMemo(
-        () =>
-            YEAR_QUY_HOACH.map((item, index) => (
-                <Button
-                    key={index}
-                    onPress={() => handleQuyHoach(index)}
-                    buttonStyle={[styles.buttonYearStyle, activeYear == index && styles.activeYear]}
-                >
-                    <Text className={`${activeYear === index ? 'text-white' : 'text-[#333]'}`}>{item}</Text>
-                </Button>
-            )),
-        [activeYear, handleQuyHoach],
     );
 
     const handleOpacityChange = useCallback((value: number) => {
@@ -75,19 +57,39 @@ const Page = () => {
     return (
         <View className="flex-1 justify-center items-center relative">
             <StatusBar style="light" />
-            <Map setLocationInfo={setLocationInfo}/>
-            <View className=" w-full absolute bottom-0 left-0 pb-2 pt-1" style={{ backgroundColor: Colors.primary.header }}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="space-x-2 ">
-                    <View
-                        className="h-full min-w-[300px] bg-[#D9D9D9] rounded-3xl flex flex-row items-center justify-center space-x-2 px-2">
+            <Map opacity={opacity} setLocationInfo={setLocationInfo} />
+            <View
+                className=" w-full absolute bottom-0 left-0 pb-2 pt-1"
+                style={{ backgroundColor: Colors.primary.header }}
+            >
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    className="space-x-2 "
+                    contentContainerStyle={{
+                        gap: 5,
+                    }}
+                >
+                    <View className="h-full min-w-[300px] bg-[#D9D9D9] rounded-3xl flex flex-row items-center justify-center space-x-2 px-2">
                         <MapLocationIcon />
                         <Text className="flex-1 font-normal text-sm">
-                            {locationInfo?.administrativeArea === '(null)' && locationInfo.subAdministrativeArea === '(null)' && 'Không có dữ liệu'}
-                            {locationInfo?.administrativeArea !== '(null)' && locationInfo?.administrativeArea}
-                            {locationInfo?.subAdministrativeArea !== '(null)' && ', ' + locationInfo?.subAdministrativeArea}
+                            {locationInfo?.administrativeArea === '(null)' &&
+                                locationInfo.subAdministrativeArea === '(null)' &&
+                                'Không có dữ liệu'}
+                            {locationInfo?.administrativeArea !== '(null)' &&
+                                locationInfo?.administrativeArea}
+                            {locationInfo?.subAdministrativeArea !== '(null)' &&
+                                ', ' + locationInfo?.subAdministrativeArea}
                         </Text>
                     </View>
-                    {renderYearButtons}
+                    {planningList && (
+                        <Button
+                        onPress={()=> doSetOpenModalPlanning(true)}
+                        buttonStyle={[styles.buttonYearStyle, isOpenModalPlanning == true && styles.activeYear]}
+                    >
+                        <Text className={`${isOpenModalPlanning === true ? 'text-white' : 'text-[#333]'}`}>Danh sách quy hoạch</Text>
+                    </Button>
+                    )}
                     <Button onPress={openBottomSheet} buttonStyle={styles.buttonDollarStyle}>
                         <DollarIcon />
                         <Text className="mx-1 text-white">Hiển thị giá</Text>
@@ -113,7 +115,6 @@ const Page = () => {
                     onValueChange={handleOpacityChange}
                 />
             </View>
-
 
             {/* <BottomSheet dismiss={dismiss} ref={sheetRef} />
             <BottomSheetQuyHoach dismiss={handleBottomSheetQuyHoachDismiss} ref={sheetQuyHoachRef} /> */}

@@ -12,6 +12,7 @@ import Map from '@/components/Map/Map';
 import MapPreview from '@/components/Map/MapPreview';
 import Modal from 'react-native-modal';
 import { BlurView } from 'expo-blur';
+import { StyleSheet } from 'nativewind';
 
 const NOMINATIM_BASE_URL = 'https://nominatim.openstreetmap.org/search?';
 const params = {
@@ -24,35 +25,35 @@ const Search = () => {
     const searchValue = useSearchStore((state) => state.searchQuery);
     const resetSearch = useSearchStore((state) => state.resetSearch);
     const doSetSearchResult = useSearchStore((state) => state.doSetSearchResult);
-
     const [isLoading, setIsLoading] = useState(false);
     const [searchResult, setSearchResult] = useState<PlaceResult[]>([]);
     const [previewItem, setPreviewItem] = useState<PlaceResult | null>(null);
+    const [isOpenPreview, setOpenPreview] = useState<boolean>(false);
+    const handleGetData = async () => {
+        if (searchValue) {
+            try {
+                setIsLoading(true);
+                const { data } = await axios.get(
+                    `${NOMINATIM_BASE_URL}${new URLSearchParams({
+                        ...params,
+                        q: searchValue,
+                    }).toString()}`,
+                );
 
-    useEffect(() => {
-        const handleGetData = async () => {
-            if (searchValue) {
-                try {
-                    setIsLoading(true);
-                    const { data } = await axios.get(
-                        `${NOMINATIM_BASE_URL}${new URLSearchParams({
-                            ...params,
-                            q: searchValue,
-                        }).toString()}`,
-                    );
-
-                    const filteredData = data.filter((item: PlaceResult) => item.geojson?.type === 'Polygon');
-                    setSearchResult(filteredData);
-                } catch (error) {
-                    console.error('Error fetching data:', error);
-                } finally {
-                    setIsLoading(false);
-                }
-            } else {
-                setSearchResult([]);
+                const filteredData = data.filter(
+                    (item: PlaceResult) => item.geojson?.type === 'Polygon',
+                );
+                setSearchResult(filteredData);
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            } finally {
+                setIsLoading(false);
             }
-        };
-
+        } else {
+            setSearchResult([]);
+        }
+    };
+    useEffect(() => {
         handleGetData();
     }, [searchValue]);
 
@@ -74,10 +75,12 @@ const Search = () => {
 
     const handleLongPress = useCallback((item: PlaceResult) => {
         setPreviewItem(item);
+        setOpenPreview(true);
     }, []);
 
     const closePreview = () => {
         setPreviewItem(null);
+        setOpenPreview(false);
     };
     const renderSearchResult = useCallback(
         ({ item }: { item: PlaceResult }) => (
@@ -96,7 +99,9 @@ const Search = () => {
     );
 
     return (
-        <SafeAreaView style={{ flex: 1, position: 'relative', backgroundColor: Colors.primary.background }}>
+        <SafeAreaView
+            style={{ flex: 1, position: 'relative', backgroundColor: Colors.primary.background }}
+        >
             <Stack.Screen
                 options={{
                     headerBackTitle: 'Quay lại',
@@ -118,7 +123,9 @@ const Search = () => {
                         keyboardDismissMode="on-drag"
                         ListEmptyComponent={
                             searchResult && searchResult.length > 0 ? (
-                                <Text style={{ textAlign: 'center', color: '#fff' }}>No results found</Text>
+                                <Text style={{ textAlign: 'center', color: '#fff' }}>
+                                    No results found
+                                </Text>
                             ) : null
                         }
                     />
@@ -151,10 +158,11 @@ const Search = () => {
                         animationOutTiming={300}
                         // backdropTransitionInTiming={1}
                         // backdropTransitionOutTiming={1}
-                        isVisible={true}
+                        isVisible={isOpenPreview}
                         onBackdropPress={closePreview}
                     >
                         <View
+                            className='overflow-hidden'
                             style={{
                                 backgroundColor: 'white',
                                 padding: 5,
@@ -163,6 +171,13 @@ const Search = () => {
                                 height: '50%',
                             }}
                         >
+                            <TouchableOpacity
+                                onPress={closePreview}
+                                activeOpacity={0.8}
+                                className="absolute top-0 bg-white px-2 p-1 rounded-br-md rounded-tl-md z-50"
+                            >
+                                <Text>Close</Text>
+                            </TouchableOpacity>
                             <MapPreview
                                 opacity={1}
                                 lat={previewItem.lat}

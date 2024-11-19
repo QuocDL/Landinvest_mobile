@@ -1,14 +1,14 @@
-import React, { useEffect, useCallback } from 'react';
-import { View, StyleSheet, useWindowDimensions } from 'react-native';
-import { Tabs, usePathname } from 'expo-router';
-import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { AuctionIcon, NotifyIcon } from '@/assets/icons';
 import { Header } from '@/components/ui/Header';
 import Colors from '@/constants/Colors';
-import Octicons from '@expo/vector-icons/Octicons';
+import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import Octicons from '@expo/vector-icons/Octicons';
+import { Tabs, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import Animated, { useSharedValue, useAnimatedStyle, withTiming, runOnJS } from 'react-native-reanimated';
+import React, { useCallback, useEffect } from 'react';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 const TabLayout = () => {
     const { width: screenWidth } = useWindowDimensions();
@@ -85,6 +85,7 @@ const TabLayout = () => {
                     />
                 ))}
             </Tabs>
+
         </>
     );
 };
