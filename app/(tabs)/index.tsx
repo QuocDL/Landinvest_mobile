@@ -13,12 +13,11 @@ import Colors from '@/constants/Colors';
 import { LocationData, QuyHoachResponse } from '@/constants/interface';
 import useMarkerStore from '@/store/quyhoachStore';
 import useSearchStore from '@/store/searchStore';
-import useModalStore from '@/store/modalStore';
+import BottomSheetQuyHoach from '@/components/ui/BottomSheetQuyHoach';
 
 const Page = () => {
     const [opacity, setOpacity] = useState(1);
     const [locationInfo, setLocationInfo] = useState<LocationData | null>(null);
-    const sheetRef = useRef<BottomSheetModal>(null);
     const sheetQuyHoachRef = useRef<BottomSheetModal>(null);
     const progress = useSharedValue(1);
     const min = useSharedValue(0);
@@ -27,15 +26,16 @@ const Page = () => {
     const planningList = useMarkerStore((state) => state.planningList);
     const idDistrict = useSearchStore((state) => state.districtId);
     // Modal state
-    const doSetOpenModalPlanning = useModalStore(state=> state.doOpenModalPlanningList)
-    const isOpenModalPlanning = useModalStore(state=> state.modalPlanningList)
-
     const openBottomSheet = useCallback(() => {
-        sheetRef.current?.present();
+        sheetQuyHoachRef.current?.present();
     }, []);
 
     const openBottomSheetQuyHoach = useCallback(() => {
-        sheetQuyHoachRef.current?.present();
+        sheetQuyHoachRef.current?.expand();
+    }, []);
+
+    const handleBottomSheetQuyHoachDismiss = useCallback(() => {
+        sheetQuyHoachRef.current?.dismiss();
     }, []);
 
     // const handleBottomSheetQuyHoachDismiss = useCallback(() => {
@@ -70,7 +70,7 @@ const Page = () => {
                         gap: 5,
                     }}
                 >
-                    <View className="h-full min-w-[300px] bg-[#D9D9D9] rounded-3xl flex flex-row items-center justify-center space-x-2 px-2">
+                    <View className="h-full py-1.5 min-w-[300px] bg-[#D9D9D9] rounded-3xl flex flex-row items-center justify-center space-x-2 px-2">
                         <MapLocationIcon />
                         <Text className="flex-1 font-normal text-sm">
                             {locationInfo?.administrativeArea === '(null)' &&
@@ -80,21 +80,17 @@ const Page = () => {
                                 locationInfo?.administrativeArea}
                             {locationInfo?.subAdministrativeArea !== '(null)' &&
                                 ', ' + locationInfo?.subAdministrativeArea}
+                            {!locationInfo?.administrativeArea && 'Không có dữ liệu'}
                         </Text>
                     </View>
                     {planningList && (
                         <Button
-                        onPress={()=> doSetOpenModalPlanning(true)}
-                        buttonStyle={[styles.buttonYearStyle, isOpenModalPlanning == true && styles.activeYear]}
-                    >
-                        <Text className={`${isOpenModalPlanning === true ? 'text-white' : 'text-[#333]'}`}>Danh sách quy hoạch</Text>
-                    </Button>
+                            onPress={openBottomSheetQuyHoach}
+                            buttonStyle={[styles.buttonYearStyle]}
+                        >
+                            <Text className={'text-black'}>Danh sách quy hoạch</Text>
+                        </Button>
                     )}
-                    <Button onPress={openBottomSheet} buttonStyle={styles.buttonDollarStyle}>
-                        <DollarIcon />
-                        <Text className="mx-1 text-white">Hiển thị giá</Text>
-                        <Feather name="chevron-down" size={18} color="#fff" />
-                    </Button>
                 </ScrollView>
             </View>
 
@@ -116,8 +112,11 @@ const Page = () => {
                 />
             </View>
 
-            {/* <BottomSheet dismiss={dismiss} ref={sheetRef} />
-            <BottomSheetQuyHoach dismiss={handleBottomSheetQuyHoachDismiss} ref={sheetQuyHoachRef} /> */}
+            {/* <BottomSheet dismiss={dismiss} ref={sheetRef} /> */}
+            <BottomSheetQuyHoach
+                dismiss={handleBottomSheetQuyHoachDismiss}
+                ref={sheetQuyHoachRef}
+            />
         </View>
     );
 };

@@ -2,6 +2,7 @@ import { CheckpointsIcon, RecyclebinIcon } from '@/assets/icons';
 import { LocationData } from '@/constants/interface';
 import useMarkerStore from '@/store/quyhoachStore';
 import useSearchStore from '@/store/searchStore';
+import { getCenterOfBoundingBoxes } from '@/utils/GetCenterOfBoundingBox';
 import { requestLocationPermission } from '@/utils/Permission';
 import { Feather } from '@expo/vector-icons';
 import SimpleLineIcons from '@expo/vector-icons/SimpleLineIcons';
@@ -29,7 +30,7 @@ const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
         return null;
     };
     // searchStore State
-    const { lat, lon } = useSearchStore((state) => state);
+    const { lat, lon, latitudeDelta: latDeltaGlobal,longitudeDelta: lonDeltaGlobal } = useSearchStore((state) => state);
     const selectedIdDistrict = useSearchStore((state) => state.districtId);
     // SearchStore Dispatch
     const doSetDistrictId = useSearchStore((state) => state.doSetDistrictId);
@@ -137,15 +138,47 @@ const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
             Alert.alert('Chưa lấy được vị trí hiện tại vui lòng thử lại.');
         } else {
             if (!selectedIdDistrict) {
-                const { data: dataQuyHoach } = await axios.get(
-                    `https://api.quyhoach.xyz/quyhoach1quan/${idQueryMaps}`,
-                );
-                if (dataQuyHoach.length) {
-                    doSetPlanningList(dataQuyHoach);
-                    doSetDistrictId(dataQuyHoach[0].id);
-                }
-                if (!dataQuyHoach) {
-                    doSetDistrictId(null);
+                try {
+                    const { data: dataQuyHoach } = await axios.get(
+                        `https://api.quyhoach.xyz/quyhoach1quan/${idQueryMaps}`,
+                    );
+                    if (dataQuyHoach.length) {
+                        const { centerLat, centerLon, latitudeDelta, longitudeDelta } =
+                            await getCenterOfBoundingBoxes(
+                                dataQuyHoach[0]?.location
+                                    ? dataQuyHoach[0].location
+                                    : dataQuyHoach[0].boundingbox,
+                            );
+                        if (
+                            centerLat !== null &&
+                            centerLon !== null &&
+                            latitudeDelta !== null &&
+                            longitudeDelta !== null
+                        ) {
+                            mapRef.current?.animateToRegion(
+                                {
+                                    latitude: centerLat,
+                                    longitude: centerLon,
+                                    latitudeDelta: latitudeDelta,
+                                    longitudeDelta: longitudeDelta,
+                                },
+                                1000,
+                            );
+                            setLocation({
+                                latitude: centerLat,
+                                longitude: centerLon,
+                            });
+                        } else {
+                            console.log('Không thể tính toán vị trí trung tâm.');
+                        }
+                        doSetPlanningList(dataQuyHoach);
+                        doSetDistrictId(dataQuyHoach[0].id);
+                    }
+                    if (!dataQuyHoach) {
+                        doSetDistrictId(null);
+                    }
+                } catch (error) {
+                    console.log(error);
                 }
             } else {
                 doSetDistrictId(null);
@@ -157,25 +190,40 @@ const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
     useEffect(() => {
         const getIdDistrictData = async () => {
             if (districtName) {
-                const apiNameDistrict = removeAccents(districtName.toLowerCase()).split('.').pop();
-                const { data: getIdDistrict } = await axios.get(
-                    `https://api.quyhoach.xyz/quyhoach/search/${apiNameDistrict}`,
-                );
-                if (getIdDistrict.Posts[0]) {
-                    setIdQueryMap(getIdDistrict.Posts[0].idDistrict);
-                }else{
+                try {
+                    const apiNameDistrict = removeAccents(districtName.toLowerCase())
+                        .split('.')
+                        .pop();
+                    const { data: getIdDistrict } = await axios.get(
+                        `https://api.quyhoach.xyz/quyhoach/search/${apiNameDistrict}`,
+                    );
+                    if (getIdDistrict.Posts[0]) {
+                        setIdQueryMap(getIdDistrict.Posts[0].idDistrict);
+                    } 
+                } catch (error) {
+                    doSetDistrictId(null);
                     setIdQueryMap(null)
+                    doRemovePlanningList()
                 }
-            }else{
-                setIdQueryMap(null)
+            } else {
+                setIdQueryMap(null);
             }
         };
         getIdDistrictData();
     }, [districtName]);
-    // Memo function
-    useMemo(() => {
+    // useEffect funtion state global
+    useEffect(() => {
         if (lat !== 0 && lon !== 0) {
             setLocation({ latitude: lat, longitude: lon });
+            console.log(latDeltaGlobal)
+            if(mapRef){
+                mapRef.current?.animateToRegion({
+                    latitude: lat,
+                    longitude: lon,
+                    latitudeDelta: latDeltaGlobal || region.latitudeDelta,
+                    longitudeDelta: lonDeltaGlobal || region.longitudeDelta
+                })
+            }
         }
     }, [lat, lon]);
     return (
@@ -191,6 +239,7 @@ const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
                 }}
                 mapType="hybridFlyover"
                 onPress={handlePressMap}
+                onLongPress={(e) => console.log(e)}
                 onDoublePress={handleDoublePress}
                 onRegionChangeComplete={onChangeRegionMap}
             >
@@ -204,7 +253,7 @@ const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
                 {selectedIdDistrict && (
                     <UrlTile
                         urlTemplate={`https://api.quyhoach.xyz/get_api_quyhoach/${selectedIdDistrict}/{z}/{x}/{y}`}
-                        maximumZ={22}
+                        maximumZ={25}
                         opacity={opacity}
                         offlineMode
                         zIndex={-2}

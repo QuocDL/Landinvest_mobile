@@ -3,9 +3,11 @@ import { create } from 'zustand';
 
 // Define the State type with correct defaults
 type State = Pick<PlaceResult, 'lat' | 'lon' | 'boundingbox'> & {
-    coordinates: PlaceResult['geojson']['coordinates'];
-    districtId: number | null;
-    searchQuery: string;
+    latitudeDelta?: number | null
+    longitudeDelta?: number | null
+    coordinates?: PlaceResult['geojson']['coordinates'];
+    districtId?: number | null;
+    searchQuery?: string;
 };
 
 // Define Action type
@@ -23,13 +25,15 @@ type Store = State & Action;
 const useSearchStore = create<Store>((set) => ({
     lat: 0,
     lon: 0,
+    latitudeDelta: null,
+    longitudeDelta: null,
     searchQuery: '',
-    boundingbox: [0, 0, 0, 0], // Initialize with a default tuple of numbers
+    boundingbox: undefined, // Initialize with a default tuple of numbers
     coordinates: [], // Initialize with an empty array of coordinates
     districtId: null,
 
-    doSetSearchResult: ({ lat, lon, boundingbox, coordinates }) => 
-        set({ lat, lon, boundingbox, coordinates }),
+    doSetSearchResult: ({ lat, lon, boundingbox, coordinates, latitudeDelta, longitudeDelta }) => 
+        set({ lat, lon, boundingbox, coordinates, latitudeDelta, longitudeDelta }),
 
     doSearch: (query: string) => set({ searchQuery: query }),
 

@@ -1,13 +1,8 @@
-import { View, Text, ScrollView, FlatList } from 'react-native';
-import React, { forwardRef, useCallback, useEffect, useMemo, useState } from 'react';
-import { BottomSheetBackdrop, BottomSheetModal } from '@gorhom/bottom-sheet';
-import useFilterStore from '@/store/filterStore';
-import { TouchableOpacity } from 'react-native-gesture-handler';
-import useSearchStore from '@/store/searchStore';
-import axios from 'axios';
-import { QuyHoachResponse } from '@/constants/interface';
-import QuyHoachSection from '../BottomSheetQuyHoach/QuyHoachSection';
 import { Feather, Ionicons } from '@expo/vector-icons';
+import { BottomSheetBackdrop, BottomSheetModal } from '@gorhom/bottom-sheet';
+import React, { forwardRef, useCallback, useMemo } from 'react';
+import { Text, View } from 'react-native';
+import { TouchableOpacity } from 'react-native-gesture-handler';
 
 export type Ref = BottomSheetModal;
 

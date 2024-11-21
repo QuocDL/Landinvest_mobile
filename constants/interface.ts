@@ -25,7 +25,7 @@ export interface PlaceResult {
     name: string;
     display_name: string;
     address: Address;
-    boundingbox: [number, number, number, number];
+    boundingbox?: [number, number, number, number];
     geojson: GeoJSON;
 }
 
@@ -51,6 +51,7 @@ export interface ListMarker {
 export interface QuyHoachResponse {
     boundingbox: string;
     description: string;
+    location: string;
     huyen_image: string;
     id: number;
     idDistrict: number;
