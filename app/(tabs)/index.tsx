@@ -1,59 +1,57 @@
-import Feather from '@expo/vector-icons/Feather';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { Button } from '@rneui/themed';
 import { StatusBar } from 'expo-status-bar';
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Slider } from 'react-native-awesome-slider';
 import { useSharedValue } from 'react-native-reanimated';
 
-import { DollarIcon, MapLocationIcon } from '@/assets/icons';
+import { MapLocationIcon } from '@/assets/icons';
 import Map from '@/components/Map/Map';
+import BottomSheetPlanning from '@/components/ui/BottomSheetPlanning';
 import Colors from '@/constants/Colors';
 import { LocationData, QuyHoachResponse } from '@/constants/interface';
 import useMarkerStore from '@/store/quyhoachStore';
 import useSearchStore from '@/store/searchStore';
-import BottomSheetQuyHoach from '@/components/ui/BottomSheetQuyHoach';
+import useRefStore from '@/store/refStore';
+import BottomSheetIsShowing from '@/components/ui/BottomSheetIsShowing';
+import { usePlanningStore } from '@/store/planningStore';
 
 const Page = () => {
     const [opacity, setOpacity] = useState(1);
     const [locationInfo, setLocationInfo] = useState<LocationData | null>(null);
-    const sheetQuyHoachRef = useRef<BottomSheetModal>(null);
+    const sheetPlanningRef = useRef<BottomSheetModal>(null);
+    const sheetPlanningIsShowingRef = useRef<BottomSheetModal>(null);
     const progress = useSharedValue(1);
     const min = useSharedValue(0);
     const max = useSharedValue(1);
-    const doSetDistrictId = useSearchStore((state) => state.doSetDistrictId);
-    const planningList = useMarkerStore((state) => state.planningList);
-    const idDistrict = useSearchStore((state) => state.districtId);
-    // Modal state
-    const openBottomSheet = useCallback(() => {
-        sheetQuyHoachRef.current?.present();
+    const doSetPlanningRef = useRefStore((state) => state.DoSetPlanningRef);
+    const planningList = usePlanningStore((state) => state.listPlanningTree);
+
+    const openBottomSheetPlanning = useCallback(() => {
+        sheetPlanningRef.current?.expand();
     }, []);
-
-    const openBottomSheetQuyHoach = useCallback(() => {
-        sheetQuyHoachRef.current?.expand();
+    const openBottomSheetPlanningIsShowing = useCallback(() => {
+        sheetPlanningIsShowingRef.current?.expand();
     }, []);
-
-    const handleBottomSheetQuyHoachDismiss = useCallback(() => {
-        sheetQuyHoachRef.current?.dismiss();
+    const handleBottomSheetPlanningDismiss = useCallback(() => {
+        sheetPlanningRef.current?.dismiss();
     }, []);
-
-    // const handleBottomSheetQuyHoachDismiss = useCallback(() => {
-    //     setActiveYear(0);
-    //     sheetQuyHoachRef.current?.dismiss();
-    // }, []);
-
-    const handleQuyHoach = useCallback(
-        (data: QuyHoachResponse) => {
-            doSetDistrictId(data.id);
-        },
-        [openBottomSheetQuyHoach],
-    );
+    const handleBottomSheetPlanningIsShowingDismiss = useCallback(() => {
+        sheetPlanningIsShowingRef.current?.dismiss();
+    }, []);
 
     const handleOpacityChange = useCallback((value: number) => {
         setOpacity(Number(value.toFixed(1)));
     }, []);
 
+    // useEffect funtion
+    useEffect(() => {
+        doSetPlanningRef(sheetPlanningIsShowingRef);
+    }, [sheetPlanningRef]);
+    useEffect(() => {
+        console.log(planningList);
+    }, [planningList]);
     return (
         <View className="flex-1 justify-center items-center relative">
             <StatusBar style="light" />
@@ -83,14 +81,20 @@ const Page = () => {
                             {!locationInfo?.administrativeArea && 'Không có dữ liệu'}
                         </Text>
                     </View>
-                    {planningList && (
+                    {planningList && planningList !== null && planningList.length !== 0 && (
                         <Button
-                            onPress={openBottomSheetQuyHoach}
+                            onPress={openBottomSheetPlanningIsShowing}
                             buttonStyle={[styles.buttonYearStyle]}
                         >
-                            <Text className={'text-black'}>Danh sách quy hoạch</Text>
+                            <Text className={'text-black'}>Quy hoạch đang hiển thị</Text>
                         </Button>
                     )}
+                    <Button
+                        onPress={openBottomSheetPlanning}
+                        buttonStyle={[styles.buttonYearStyle, styles.activeYear]}
+                    >
+                        <Text className={'text-white'}>Danh sách quy hoạch</Text>
+                    </Button>
                 </ScrollView>
             </View>
 
@@ -113,9 +117,13 @@ const Page = () => {
             </View>
 
             {/* <BottomSheet dismiss={dismiss} ref={sheetRef} /> */}
-            <BottomSheetQuyHoach
-                dismiss={handleBottomSheetQuyHoachDismiss}
-                ref={sheetQuyHoachRef}
+            <BottomSheetIsShowing
+                dismiss={handleBottomSheetPlanningIsShowingDismiss}
+                ref={sheetPlanningIsShowingRef}
+            />
+            <BottomSheetPlanning
+                dismiss={handleBottomSheetPlanningDismiss}
+                ref={sheetPlanningRef}
             />
         </View>
     );

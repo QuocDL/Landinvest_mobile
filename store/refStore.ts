@@ -11,9 +11,9 @@ interface Action {
 
 type Store = State & Action
 
-const useSheetRefStore = create<Store>((set)=>({
+const useRefStore = create<Store>((set)=>({
     sheetPlanningRef: null,
     DoSetPlanningRef: (ref)=> set({sheetPlanningRef: ref})
 }))
 
-export default useSheetRefStore
+export default useRefStore

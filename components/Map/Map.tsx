@@ -1,6 +1,8 @@
 import { CheckpointsIcon, RecyclebinIcon } from '@/assets/icons';
 import { LocationData } from '@/constants/interface';
+import { usePlanningStore } from '@/store/planningStore';
 import useMarkerStore from '@/store/quyhoachStore';
+import useRefStore from '@/store/refStore';
 import useSearchStore from '@/store/searchStore';
 import { getCenterOfBoundingBoxes } from '@/utils/GetCenterOfBoundingBox';
 import { requestLocationPermission } from '@/utils/Permission';
@@ -29,13 +31,21 @@ const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
         }
         return null;
     };
-    // searchStore State
-    const { lat, lon, latitudeDelta: latDeltaGlobal,longitudeDelta: lonDeltaGlobal } = useSearchStore((state) => state);
+    // Store State
+    const sheetPlanningRef = useRefStore((state) => state.sheetPlanningRef);
+    const {
+        lat,
+        lon,
+        latitudeDelta: latDeltaGlobal,
+        longitudeDelta: lonDeltaGlobal,
+    } = useSearchStore((state) => state);
     const selectedIdDistrict = useSearchStore((state) => state.districtId);
-    // SearchStore Dispatch
+    const listImagePlanning = usePlanningStore((state) => state.listPlanningImage);
+    // Store Dispatch
     const doSetDistrictId = useSearchStore((state) => state.doSetDistrictId);
-    const doSetPlanningList = useMarkerStore((state) => state.doSetPlanningList);
     const doRemovePlanningList = useMarkerStore((state) => state.doRemovePlanningList);
+    const doAddPlanningList = usePlanningStore((state) => state.doAddListPlanningTree);
+    const doChangeImagePlanning = usePlanningStore((state) => state.changeImagePlanning);
     // MapState
     const [location, setLocation] = useState({
         latitude: 21.16972,
@@ -49,6 +59,7 @@ const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
     });
     const [districtName, setDistrictName] = useState<string | null>(null);
     const [idQueryMaps, setIdQueryMap] = useState<string | null>(null);
+    const [isVietNam, setCheckingCountry] = useState<boolean>();
     // Loading State
     const [loadingGoToUser, setLoadingGoToUser] = useState<boolean>(false);
     const [loadingGlobal, setLoadingGlobal] = useState<boolean>(false);
@@ -63,6 +74,7 @@ const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
                 setLoadingGlobal(false);
             }
             if (data) {
+                setCheckingCountry(data.countryCode === 'VN');
                 setLocationInfo(data as LocationData);
                 setLoadingGlobal(false);
             }
@@ -134,55 +146,54 @@ const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
         }
     };
     const handleDoublePress = async (e: ClickEvent) => {
-        if (loadingGlobal) {
+        if (loadingGlobal || !isVietNam) {
             Alert.alert('Chưa lấy được vị trí hiện tại vui lòng thử lại.');
         } else {
-            if (!selectedIdDistrict) {
-                try {
-                    const { data: dataQuyHoach } = await axios.get(
-                        `https://api.quyhoach.xyz/quyhoach1quan/${idQueryMaps}`,
-                    );
-                    if (dataQuyHoach.length) {
-                        const { centerLat, centerLon, latitudeDelta, longitudeDelta } =
-                            await getCenterOfBoundingBoxes(
-                                dataQuyHoach[0]?.location
-                                    ? dataQuyHoach[0].location
-                                    : dataQuyHoach[0].boundingbox,
-                            );
-                        if (
-                            centerLat !== null &&
-                            centerLon !== null &&
-                            latitudeDelta !== null &&
-                            longitudeDelta !== null
-                        ) {
-                            mapRef.current?.animateToRegion(
-                                {
-                                    latitude: centerLat,
-                                    longitude: centerLon,
-                                    latitudeDelta: latitudeDelta,
-                                    longitudeDelta: longitudeDelta,
-                                },
-                                1000,
-                            );
-                            setLocation({
+            try {
+                const { data: dataQuyHoach } = await axios.get(
+                    `https://api.quyhoach.xyz/quyhoach1quan/${idQueryMaps}`,
+                );
+                if (dataQuyHoach.length) {
+                    const { centerLat, centerLon, latitudeDelta, longitudeDelta } =
+                        await getCenterOfBoundingBoxes(
+                            dataQuyHoach[0]?.location
+                                ? dataQuyHoach[0].location
+                                : dataQuyHoach[0].boundingbox,
+                        );
+                    if (
+                        centerLat !== null &&
+                        centerLon !== null &&
+                        latitudeDelta !== null &&
+                        longitudeDelta !== null &&
+                        !listImagePlanning?.includes(dataQuyHoach[0].huyen_image)
+                    ) {
+                        mapRef.current?.animateToRegion(
+                            {
                                 latitude: centerLat,
                                 longitude: centerLon,
-                            });
-                        } else {
-                            console.log('Không thể tính toán vị trí trung tâm.');
-                        }
-                        doSetPlanningList(dataQuyHoach);
-                        doSetDistrictId(dataQuyHoach[0].id);
-                    }
-                    if (!dataQuyHoach) {
-                        doSetDistrictId(null);
-                    }
-                } catch (error) {
-                    console.log(error);
+                                latitudeDelta: latitudeDelta,
+                                longitudeDelta: longitudeDelta,
+                            },
+                            1000,
+                        );
+                        setLocation({
+                            latitude: centerLat,
+                            longitude: centerLon,
+                        });
+                        doAddPlanningList({
+                            name: districtName as string,
+                            planning: dataQuyHoach,
+                        });
+                        sheetPlanningRef?.current?.expand();
+                        doChangeImagePlanning(dataQuyHoach[0].huyen_image);
+                        doAddPlanningList({
+                            name: districtName as string,
+                            planning: dataQuyHoach
+                        })
+                    } 
                 }
-            } else {
-                doSetDistrictId(null);
-                doRemovePlanningList();
+            } catch (error) {
+                console.log(error);
             }
         }
     };
@@ -199,11 +210,11 @@ const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
                     );
                     if (getIdDistrict.Posts[0]) {
                         setIdQueryMap(getIdDistrict.Posts[0].idDistrict);
-                    } 
+                    }
                 } catch (error) {
                     doSetDistrictId(null);
-                    setIdQueryMap(null)
-                    doRemovePlanningList()
+                    setIdQueryMap(null);
+                    doRemovePlanningList();
                 }
             } else {
                 setIdQueryMap(null);
@@ -215,14 +226,14 @@ const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
     useEffect(() => {
         if (lat !== 0 && lon !== 0) {
             setLocation({ latitude: lat, longitude: lon });
-            console.log(latDeltaGlobal)
-            if(mapRef){
+            console.log(latDeltaGlobal);
+            if (mapRef) {
                 mapRef.current?.animateToRegion({
                     latitude: lat,
                     longitude: lon,
                     latitudeDelta: latDeltaGlobal || region.latitudeDelta,
-                    longitudeDelta: lonDeltaGlobal || region.longitudeDelta
-                })
+                    longitudeDelta: lonDeltaGlobal || region.longitudeDelta,
+                });
             }
         }
     }, [lat, lon]);
@@ -250,15 +261,17 @@ const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
                     />
                 </Marker>
 
-                {selectedIdDistrict && (
-                    <UrlTile
-                        urlTemplate={`https://api.quyhoach.xyz/get_api_quyhoach/${selectedIdDistrict}/{z}/{x}/{y}`}
-                        maximumZ={25}
-                        opacity={opacity}
-                        offlineMode
-                        zIndex={-2}
-                    />
-                )}
+                {listImagePlanning &&
+                    listImagePlanning.map((item, index) => (
+                        <UrlTile
+                            key={index}
+                            urlTemplate={`${item}/{z}/{x}/{y}`}
+                            maximumZ={25}
+                            opacity={opacity}
+                            offlineMode
+                            zIndex={-2}
+                        />
+                    ))}
             </MapView>
             {loadingGlobal && (
                 <View className="absolute  flex flex-row bottom-14 left-2 items-start w-screen">
