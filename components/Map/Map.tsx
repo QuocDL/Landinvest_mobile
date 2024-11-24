@@ -39,7 +39,6 @@ const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
         latitudeDelta: latDeltaGlobal,
         longitudeDelta: lonDeltaGlobal,
     } = useSearchStore((state) => state);
-    const selectedIdDistrict = useSearchStore((state) => state.districtId);
     const listImagePlanning = usePlanningStore((state) => state.listPlanningImage);
     // Store Dispatch
     const doSetDistrictId = useSearchStore((state) => state.doSetDistrictId);
@@ -125,7 +124,6 @@ const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
             setLoadingGoToUser(false);
         } catch (error) {
             setLoadingGoToUser(false);
-            console.error('Error getting user location: ', error);
             Alert.alert('Lỗi', 'Không xác định được vị trí hiện tại của bạn.');
         }
     };
@@ -226,7 +224,6 @@ const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
     useEffect(() => {
         if (lat !== 0 && lon !== 0) {
             setLocation({ latitude: lat, longitude: lon });
-            console.log(latDeltaGlobal);
             if (mapRef) {
                 mapRef.current?.animateToRegion({
                     latitude: lat,

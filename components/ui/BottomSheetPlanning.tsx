@@ -1,6 +1,8 @@
 import Colors from '@/constants/Colors';
 import { QuyHoachResponse } from '@/constants/interface';
 import { usePlanningStore } from '@/store/planningStore';
+import useSearchStore from '@/store/searchStore';
+import { getCenterOfBoundingBoxes } from '@/utils/GetCenterOfBoundingBox';
 import { AntDesign, Ionicons } from '@expo/vector-icons';
 import BottomSheet, {
     BottomSheetBackdrop,
@@ -24,8 +26,11 @@ const BottomSheetPlanning = forwardRef<Ref, { dismiss: () => void }>((props, ref
     // State
     const listImagePlanning = usePlanningStore((state) => state.listPlanningImage);
     // dispatch
-    const doRemoveWithImagePlanningTree = usePlanningStore((state) => state.removeWithImagePlanningTree);
+    const doRemoveWithImagePlanningTree = usePlanningStore(
+        (state) => state.removeWithImagePlanningTree,
+    );
     const changeListPlanningImage = usePlanningStore((state) => state.changeImagePlanning);
+    const doSetNewLocation = useSearchStore((state) => state.doSetSearchResult);
     // Backdrop render for bottom Sheet
     const renderBackdrop = useCallback(
         (props: any) => (
@@ -34,7 +39,7 @@ const BottomSheetPlanning = forwardRef<Ref, { dismiss: () => void }>((props, ref
         [],
     );
     // Change IdDistrict onPress section planning
-    const handleChoosePlanningProvince = (item: any) => {
+    const handleChoosePlanningProvince = async (item: any) => {
         if (item.link_image === '') {
             item.quan_huyen_1_tinh.forEach((huyen: any) => {
                 huyen.quyhoach?.forEach((qh: any) => {
@@ -42,6 +47,18 @@ const BottomSheetPlanning = forwardRef<Ref, { dismiss: () => void }>((props, ref
                 });
             });
         } else {
+            const district = item.quan_huyen_1_tinh[item.quan_huyen_1_tinh.length - 1];
+            const lastPlanning = district.quyhoach[0];
+            const { centerLat, centerLon, latitudeDelta, longitudeDelta } =
+                await getCenterOfBoundingBoxes(
+                    lastPlanning.location ? lastPlanning.location : lastPlanning.boundingbox,
+                );
+            doSetNewLocation({
+                lat: centerLat as number,
+                lon: centerLon as number,
+                latitudeDelta: latitudeDelta,
+                longitudeDelta: longitudeDelta,
+            });
             changeListPlanningImage(item.link_image);
         }
     };
