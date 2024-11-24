@@ -28,7 +28,7 @@ type IListPlanning = {
     name: string;
     planning: QuyHoachResponse[];
 };
-const BottomSheetIsShowing = forwardRef<Ref, { dismiss: () => void }>((props, ref) => {
+const BottomSheetShowing = forwardRef<Ref, { dismiss: () => void }>((props, ref) => {
     // Component State
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [listDistrict, setListDistrict] = useState<IListPlanning[] | null>(null);
@@ -37,6 +37,7 @@ const BottomSheetIsShowing = forwardRef<Ref, { dismiss: () => void }>((props, re
     // State
     const listImagePlanning = usePlanningStore((state) => state.listPlanningImage);
     const listPlanningTree = usePlanningStore((state) => state.listPlanningTree);
+    const doublePressListPlanning = usePlanningStore(state=> state.listPlanningItemDoublePress)
     // dispatch
     const changeListPlanningImage = usePlanningStore((state) => state.changeImagePlanning);
     const doSetLatLon = useSearchStore((state) => state.doSetSearchResult);
@@ -100,13 +101,16 @@ const BottomSheetIsShowing = forwardRef<Ref, { dismiss: () => void }>((props, re
             setListDistrict(listPlanningTree);
         }
     };
-    const handleHiddenDistrictPlanning = (item: IListPlanning)=>{
-        doRemoveDistrictTreeWithPlanningList(item.planning)
-    }
+    const handleHiddenDistrictPlanning = (item: IListPlanning) => {
+        doRemoveDistrictTreeWithPlanningList(item.planning);
+    };
     // useEffect function
     useEffect(() => {
         setListDistrict(listPlanningTree);
     }, [listPlanningTree]);
+    useEffect(()=>{
+        setListPlanning(doublePressListPlanning)
+    },[doublePressListPlanning])
     return (
         <BottomSheet
             backdropComponent={renderBackdrop}
@@ -114,7 +118,7 @@ const BottomSheetIsShowing = forwardRef<Ref, { dismiss: () => void }>((props, re
             snapPoints={['65%', '70%']}
             index={-1}
             enablePanDownToClose
-            onClose={()=> Keyboard.dismiss()}
+            onClose={() => Keyboard.dismiss()}
             handleComponent={() =>
                 listPlanning ? (
                     // Hiển thị nút quay lại khi có listPlanning
@@ -182,7 +186,10 @@ const BottomSheetIsShowing = forwardRef<Ref, { dismiss: () => void }>((props, re
                                 >
                                     {item.name}
                                 </Text>
-                                <TouchableOpacity onPress={()=> handleHiddenDistrictPlanning(item)} className="absolute right-2">
+                                <TouchableOpacity
+                                    onPress={() => handleHiddenDistrictPlanning(item)}
+                                    className="absolute right-2"
+                                >
                                     <FontAwesome name="trash-o" size={20} color="gray" />
                                 </TouchableOpacity>
                             </TouchableOpacity>
@@ -190,7 +197,7 @@ const BottomSheetIsShowing = forwardRef<Ref, { dismiss: () => void }>((props, re
                     />
                 )}
 
-                {listPlanning && (
+                {listPlanning &&(
                     <View className="px-2">
                         <FlatList
                             className="min-h-full pt-2"
@@ -256,4 +263,4 @@ const styles = StyleSheet.create({
         elevation: 10,
     },
 });
-export default BottomSheetIsShowing;
+export default BottomSheetShowing;

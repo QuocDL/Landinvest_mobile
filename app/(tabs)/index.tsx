@@ -14,8 +14,8 @@ import { LocationData, QuyHoachResponse } from '@/constants/interface';
 import useMarkerStore from '@/store/quyhoachStore';
 import useSearchStore from '@/store/searchStore';
 import useRefStore from '@/store/refStore';
-import BottomSheetIsShowing from '@/components/ui/BottomSheetIsShowing';
 import { usePlanningStore } from '@/store/planningStore';
+import BottomSheetShowing from '@/components/ui/BottomSheetShowing';
 
 const Page = () => {
     const [opacity, setOpacity] = useState(1);
@@ -117,7 +117,7 @@ const Page = () => {
             </View>
 
             {/* <BottomSheet dismiss={dismiss} ref={sheetRef} /> */}
-            <BottomSheetIsShowing
+            <BottomSheetShowing
                 dismiss={handleBottomSheetPlanningIsShowingDismiss}
                 ref={sheetPlanningIsShowingRef}
             />

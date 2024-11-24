@@ -45,6 +45,7 @@ const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
     const doRemovePlanningList = useMarkerStore((state) => state.doRemovePlanningList);
     const doAddPlanningList = usePlanningStore((state) => state.doAddListPlanningTree);
     const doChangeImagePlanning = usePlanningStore((state) => state.changeImagePlanning);
+    const doDoublePressSetPlanning = usePlanningStore(state => state.doDoublePressAddPlanning)
     // MapState
     const [location, setLocation] = useState({
         latitude: 21.16972,
@@ -182,6 +183,7 @@ const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
                             name: districtName as string,
                             planning: dataQuyHoach,
                         });
+                        doDoublePressSetPlanning(dataQuyHoach)
                         sheetPlanningRef?.current?.expand();
                         doChangeImagePlanning(dataQuyHoach[0].huyen_image);
                         doAddPlanningList({
