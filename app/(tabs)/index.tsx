@@ -8,14 +8,12 @@ import { useSharedValue } from 'react-native-reanimated';
 
 import { MapLocationIcon } from '@/assets/icons';
 import Map from '@/components/Map/Map';
-import BottomSheetPlanning from '@/components/ui/BottomSheetPlanning';
 import Colors from '@/constants/Colors';
-import { LocationData, QuyHoachResponse } from '@/constants/interface';
-import useMarkerStore from '@/store/quyhoachStore';
-import useSearchStore from '@/store/searchStore';
-import useRefStore from '@/store/refStore';
+import { LocationData } from '@/constants/interface';
 import { usePlanningStore } from '@/store/planningStore';
+import useRefStore from '@/store/refStore';
 import BottomSheetShowing from '@/components/ui/BottomSheetShowing';
+import BottomSheetPlanning from '@/components/ui/BottomSheetPlanning';
 
 const Page = () => {
     const [opacity, setOpacity] = useState(1);
@@ -26,6 +24,7 @@ const Page = () => {
     const min = useSharedValue(0);
     const max = useSharedValue(1);
     const doSetPlanningRef = useRefStore((state) => state.DoSetPlanningRef);
+    const doSetGlobalPlanningRef = useRefStore(state => state.DoSetGlobalPlanningRef)
     const planningList = usePlanningStore((state) => state.listPlanningTree);
 
     const openBottomSheetPlanning = useCallback(() => {
@@ -48,10 +47,9 @@ const Page = () => {
     // useEffect funtion
     useEffect(() => {
         doSetPlanningRef(sheetPlanningIsShowingRef);
-    }, [sheetPlanningRef]);
-    useEffect(() => {
-        console.log(planningList);
-    }, [planningList]);
+        doSetGlobalPlanningRef(sheetPlanningRef)
+    }, [sheetPlanningRef, sheetPlanningIsShowingRef]);
+
     return (
         <View className="flex-1 justify-center items-center relative">
             <StatusBar style="light" />

@@ -268,6 +268,7 @@ const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
                             maximumZ={25}
                             opacity={opacity}
                             offlineMode
+                            tileCacheMaxAge={250}
                             zIndex={-2}
                         />
                     ))}

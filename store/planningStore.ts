@@ -15,7 +15,7 @@ type Action = {
     removeWithImagePlanningTree: (planningName: string) => void;
     changeImagePlanning: (planningImage: string) => void;
     doRemoveDistrictWithPlaningList: (planningList: QuyHoachResponse[]) => void;
-    doDoublePressAddPlanning: (num: QuyHoachResponse[]) => void;
+    doDoublePressAddPlanning: (num: QuyHoachResponse[] | null) => void;
 };
 
 type Store = State & Action;
@@ -57,7 +57,6 @@ export const usePlanningStore = create<Store>((set) => ({
                     (image) => !planningList.some((planning) => planning.huyen_image === image),
                 ) ?? []; // Nếu listPlanningImage là null, trả về mảng rỗng
             // Cập nhật lại listPlanningImage
-            console.log(updatedImageList)
             set({ listPlanningImage: updatedImageList });
             // Find index in array want remove
             const indexToRemove = state.listPlanningTree.findIndex(

@@ -37,7 +37,7 @@ const BottomSheetShowing = forwardRef<Ref, { dismiss: () => void }>((props, ref)
     // State
     const listImagePlanning = usePlanningStore((state) => state.listPlanningImage);
     const listPlanningTree = usePlanningStore((state) => state.listPlanningTree);
-    const doublePressListPlanning = usePlanningStore(state=> state.listPlanningItemDoublePress)
+    const doublePressListPlanning = usePlanningStore((state) => state.listPlanningItemDoublePress);
     // dispatch
     const changeListPlanningImage = usePlanningStore((state) => state.changeImagePlanning);
     const doSetLatLon = useSearchStore((state) => state.doSetSearchResult);
@@ -93,8 +93,6 @@ const BottomSheetShowing = forwardRef<Ref, { dismiss: () => void }>((props, ref)
                     district.name.toLowerCase().includes(query.toLowerCase())
                 );
             });
-
-            console.log(filtered);
             setListDistrict(filtered);
         }
         if (query === '') {
@@ -108,9 +106,9 @@ const BottomSheetShowing = forwardRef<Ref, { dismiss: () => void }>((props, ref)
     useEffect(() => {
         setListDistrict(listPlanningTree);
     }, [listPlanningTree]);
-    useEffect(()=>{
-        setListPlanning(doublePressListPlanning)
-    },[doublePressListPlanning])
+    useEffect(() => {
+        setListPlanning(doublePressListPlanning);
+    }, [doublePressListPlanning]);
     return (
         <BottomSheet
             backdropComponent={renderBackdrop}
@@ -118,7 +116,10 @@ const BottomSheetShowing = forwardRef<Ref, { dismiss: () => void }>((props, ref)
             snapPoints={['65%', '70%']}
             index={-1}
             enablePanDownToClose
-            onClose={() => Keyboard.dismiss()}
+            onClose={() => {
+                Keyboard.dismiss();
+                handlePrevToViewDistrict();
+            }}
             handleComponent={() =>
                 listPlanning ? (
                     // Hiển thị nút quay lại khi có listPlanning
@@ -139,10 +140,17 @@ const BottomSheetShowing = forwardRef<Ref, { dismiss: () => void }>((props, ref)
             }
         >
             <BottomSheetView>
-                {listDistrict && !listPlanning && (
+                {/* {listDistrict && !listPlanning && (
+                    <View className="py-2">
+                        <Text className="text-center">
+                            Không có dữ liệu quy hoạch đang được hiển thị
+                        </Text>
+                    </View>
+                )} */}
+                {listDistrict && listDistrict.length !== 0 && !listPlanning ? (
                     <FlatList
                         ListHeaderComponent={
-                            <View className=" py-2 bg-white">
+                            <View className=" py-1 bg-white">
                                 <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
                                     <TextInput
                                         value={searchQuery}
@@ -152,9 +160,12 @@ const BottomSheetShowing = forwardRef<Ref, { dismiss: () => void }>((props, ref)
                                         className="border border-[#7777] rounded px-3 py-2 text-base"
                                     />
                                 </TouchableWithoutFeedback>
+                                <Text className="py-1.5 font-medium">
+                                    Danh sách quy hoạch đang được hiển thị
+                                </Text>
                             </View>
                         }
-                        className="min-h-full px-2 pt-2"
+                        className="min-h-full px-2"
                         data={listDistrict}
                         contentContainerStyle={{
                             gap: 5,
@@ -188,16 +199,25 @@ const BottomSheetShowing = forwardRef<Ref, { dismiss: () => void }>((props, ref)
                                 </Text>
                                 <TouchableOpacity
                                     onPress={() => handleHiddenDistrictPlanning(item)}
-                                    className="absolute right-2"
+                                    className="absolute right-5"
+                                    hitSlop={10}
                                 >
                                     <FontAwesome name="trash-o" size={20} color="gray" />
                                 </TouchableOpacity>
                             </TouchableOpacity>
                         )}
                     />
+                ) : (
+                    !listPlanning && (
+                        <View className="py-2">
+                            <Text className="text-center">
+                                Không có dữ liệu quy hoạch đang được hiển thị
+                            </Text>
+                        </View>
+                    )
                 )}
 
-                {listPlanning &&(
+                {listPlanning && listDistrict && listDistrict.length !== 0 && (
                     <View className="px-2">
                         <FlatList
                             className="min-h-full pt-2"
@@ -208,7 +228,7 @@ const BottomSheetShowing = forwardRef<Ref, { dismiss: () => void }>((props, ref)
                             ListHeaderComponent={
                                 <View className="py-2">
                                     <Text className="text-lg font-semibold">
-                                        Danh sách quy hoạch của{' '}
+                                        {'Danh sách quy hoạch của '}
                                         {districtName ? districtName : 'Quận/ Huyện'}
                                     </Text>
                                 </View>
@@ -223,23 +243,22 @@ const BottomSheetShowing = forwardRef<Ref, { dismiss: () => void }>((props, ref)
                             keyExtractor={(item, index) => index.toString()}
                             renderItem={({ item }) => (
                                 <TouchableOpacity
-                                    onPress={() => handleChoosePlanning(item)}
-                                    style={styles.container}
                                     className={`flex flex-row items-center pr-3 h-20 rounded border-[1px] border-[#777777] ${
                                         listImagePlanning?.includes(item.huyen_image)
-                                            ? `bg-[${Colors.primary.green}]`
+                                            ? `bg-green-500`
                                             : 'bg-white'
                                     }`}
+                                    activeOpacity={1}
+                                    onPress={() => handleChoosePlanning(item)}
                                 >
                                     <Image
                                         source={require('@/assets/images/quyhoach.png')}
                                         className="h-full w-20 bg-contain rounded-sm"
                                     />
-                                    <Text
-                                        numberOfLines={1}
-                                        className={`flex-1 font-medium ml-2 text-base`}
-                                    >
+                                    <Text className={`flex-1 font-medium ml-2 text-base`}>
                                         {item.description}
+                                        {' | '}
+                                        {item.id + ' - ' + item.idDistrict}
                                     </Text>
                                 </TouchableOpacity>
                             )}
