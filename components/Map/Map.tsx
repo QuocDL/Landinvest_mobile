@@ -1,5 +1,5 @@
 import { CheckpointsIcon, RecyclebinIcon } from '@/assets/icons';
-import { LocationData } from '@/constants/interface';
+import { LocationData, QuyHoachResponse } from '@/constants/interface';
 import { usePlanningStore } from '@/store/planningStore';
 import useMarkerStore from '@/store/quyhoachStore';
 import useRefStore from '@/store/refStore';
@@ -20,6 +20,7 @@ type IMapsPropsType = {
     setLocationInfo: (data: LocationData) => void;
     opacity: number;
 };
+const MemoizedUrlTile = React.memo(UrlTile);
 const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
     // Ref element
     const mapRef = useRef<MapView>(null);
@@ -32,6 +33,7 @@ const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
         return null;
     };
     // Store State
+    const mapType = useRefStore(state=> state.mapType)
     const sheetPlanningRef = useRefStore((state) => state.sheetPlanningRef);
     const {
         lat,
@@ -45,8 +47,9 @@ const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
     const doRemovePlanningList = useMarkerStore((state) => state.doRemovePlanningList);
     const doAddPlanningList = usePlanningStore((state) => state.doAddListPlanningTree);
     const doChangeImagePlanning = usePlanningStore((state) => state.changeImagePlanning);
-    const doDoublePressSetPlanning = usePlanningStore(state => state.doDoublePressAddPlanning)
+    const doDoublePressSetPlanning = usePlanningStore((state) => state.doDoublePressAddPlanning);
     // MapState
+    const [imagePlanning, setImagePlanning] = useState<string[]>([]);
     const [location, setLocation] = useState({
         latitude: 21.16972,
         longitude: 105.84944,
@@ -149,7 +152,7 @@ const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
             Alert.alert('Chưa lấy được vị trí hiện tại vui lòng thử lại.');
         } else {
             try {
-                const { data: dataQuyHoach } = await axios.get(
+                const { data: dataQuyHoach } = await axios.get<QuyHoachResponse[]>(
                     `https://api.quyhoach.xyz/quyhoach1quan/${idQueryMaps}`,
                 );
                 if (dataQuyHoach.length) {
@@ -179,18 +182,16 @@ const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
                             latitude: centerLat,
                             longitude: centerLon,
                         });
-                        doAddPlanningList({
-                            name: districtName as string,
-                            planning: dataQuyHoach,
-                        });
-                        doDoublePressSetPlanning(dataQuyHoach)
+                        doDoublePressSetPlanning(dataQuyHoach);
                         sheetPlanningRef?.current?.expand();
                         doChangeImagePlanning(dataQuyHoach[0].huyen_image);
                         doAddPlanningList({
-                            name: districtName as string,
-                            planning: dataQuyHoach
-                        })
-                    } 
+                            name: dataQuyHoach[0].ten_quan as string,
+                            planning: dataQuyHoach,
+                        });
+                    }
+                } else {
+                    Alert.alert('Lỗi hệ thống vui lòng thử lại sau');
                 }
             } catch (error) {
                 console.log(error);
@@ -236,6 +237,11 @@ const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
             }
         }
     }, [lat, lon]);
+    useEffect(() => {
+        if (listImagePlanning !== null) {
+            setImagePlanning(listImagePlanning);
+        }
+    }, [listImagePlanning]);
     return (
         <>
             <MapView
@@ -247,7 +253,7 @@ const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
                     latitudeDelta: region.latitudeDelta,
                     longitudeDelta: region.longitudeDelta,
                 }}
-                mapType="hybridFlyover"
+                mapType={mapType}
                 onPress={handlePressMap}
                 onLongPress={(e) => console.log(e)}
                 onDoublePress={handleDoublePress}
@@ -260,18 +266,16 @@ const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
                     />
                 </Marker>
 
-                {listImagePlanning &&
-                    listImagePlanning.map((item, index) => (
-                        <UrlTile
-                            key={index}
-                            urlTemplate={`${item}/{z}/{x}/{y}`}
-                            maximumZ={25}
-                            opacity={opacity}
-                            offlineMode
-                            tileCacheMaxAge={250}
-                            zIndex={-2}
-                        />
-                    ))}
+                {imagePlanning.map((item, index) => (
+                    <UrlTile
+                        key={index}
+                        urlTemplate={`${item}/{z}/{x}/{y}`}
+                        maximumZ={25}
+                        opacity={opacity}
+                        offlineMode
+                        zIndex={-2}
+                    />
+                ))}
             </MapView>
             {loadingGlobal && (
                 <View className="absolute  flex flex-row bottom-14 left-2 items-start w-screen">

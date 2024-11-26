@@ -50,12 +50,15 @@ export interface ListMarker {
 
 export interface QuyHoachResponse {
     boundingbox: string;
+    coordation: string;
     description: string;
-    location: string;
     huyen_image: string;
-    id: number;
     idDistrict: number;
     idProvince: number;
+    id_quyhoach: number;
+    ten_quan?: string;
+    id?: number;
+    location: string;
 }
 
 export interface LocationData {

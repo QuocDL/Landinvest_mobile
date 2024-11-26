@@ -39,7 +39,7 @@ const BottomSheetShowing = forwardRef<Ref, { dismiss: () => void }>((props, ref)
     const listPlanningTree = usePlanningStore((state) => state.listPlanningTree);
     const doublePressListPlanning = usePlanningStore((state) => state.listPlanningItemDoublePress);
     // dispatch
-    const changeListPlanningImage = usePlanningStore((state) => state.changeImagePlanning);
+    const changeImagePlanning = usePlanningStore((state) => state.changeImagePlanning);
     const doSetLatLon = useSearchStore((state) => state.doSetSearchResult);
     const doRemoveDistrictTreeWithPlanningList = usePlanningStore(
         (state) => state.doRemoveDistrictWithPlaningList,
@@ -53,9 +53,9 @@ const BottomSheetShowing = forwardRef<Ref, { dismiss: () => void }>((props, ref)
     );
     // Change IdDistrict onPress section planning
     const handleChoosePlanning = async (item: QuyHoachResponse) => {
-        const imageExists = listImagePlanning?.includes(item.huyen_image);
+        const imageExists = await listImagePlanning?.includes(item.huyen_image);
         if (!imageExists) {
-            changeListPlanningImage(item.huyen_image);
+            changeImagePlanning(item.huyen_image);
             const { centerLat, centerLon, latitudeDelta, longitudeDelta } =
                 await getCenterOfBoundingBoxes(item.location ? item.location : item.boundingbox);
             doSetLatLon({
@@ -65,7 +65,7 @@ const BottomSheetShowing = forwardRef<Ref, { dismiss: () => void }>((props, ref)
                 longitudeDelta: longitudeDelta,
             });
         } else {
-            changeListPlanningImage(item.huyen_image);
+            changeImagePlanning(item.huyen_image);
         }
     };
     const handlePrevToViewDistrict = () => {
@@ -109,6 +109,31 @@ const BottomSheetShowing = forwardRef<Ref, { dismiss: () => void }>((props, ref)
     useEffect(() => {
         setListPlanning(doublePressListPlanning);
     }, [doublePressListPlanning]);
+    const onChangeBottomSheet = () => {
+        const listDistrict = listPlanningTree
+            ?.map((district) => {
+                // Check if none of the planning items has huyen_image present in listImagePlanning
+                const planningWithoutImage = district.planning?.every((plan) => {
+                    // Check if huyen_image exists and if it is NOT in listImagePlanning
+                    return !plan.huyen_image || !listImagePlanning?.includes(plan.huyen_image);
+                });
+
+                // If all planning items do not have their huyen_image in listImagePlanning
+                if (planningWithoutImage) {
+                    return { name: district.name, planning: district.planning };
+                }
+
+                // Otherwise, return null
+                return null;
+            })
+            .filter((district) => district !== null);
+        listDistrict?.forEach((e) => doRemoveDistrictTreeWithPlanningList(e.planning));
+    };
+    useEffect(() => {
+        if (!listPlanning) {
+            onChangeBottomSheet();
+        }
+    }, [listImagePlanning]);
     return (
         <BottomSheet
             backdropComponent={renderBackdrop}
@@ -118,7 +143,8 @@ const BottomSheetShowing = forwardRef<Ref, { dismiss: () => void }>((props, ref)
             enablePanDownToClose
             onClose={() => {
                 Keyboard.dismiss();
-                handlePrevToViewDistrict();
+                setListPlanning(null);
+                onChangeBottomSheet();
             }}
             handleComponent={() =>
                 listPlanning ? (
@@ -258,7 +284,7 @@ const BottomSheetShowing = forwardRef<Ref, { dismiss: () => void }>((props, ref)
                                     <Text className={`flex-1 font-medium ml-2 text-base`}>
                                         {item.description}
                                         {' | '}
-                                        {item.id + ' - ' + item.idDistrict}
+                                        {item.id_quyhoach || item.id + ' - ' + item.idDistrict}
                                     </Text>
                                 </TouchableOpacity>
                             )}

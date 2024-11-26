@@ -1,8 +1,8 @@
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
-import { Button } from '@rneui/themed';
+import { Button, CheckBox } from '@rneui/themed';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Slider } from 'react-native-awesome-slider';
 import { useSharedValue } from 'react-native-reanimated';
 
@@ -14,6 +14,8 @@ import { usePlanningStore } from '@/store/planningStore';
 import useRefStore from '@/store/refStore';
 import BottomSheetShowing from '@/components/ui/BottomSheetShowing';
 import BottomSheetPlanning from '@/components/ui/BottomSheetPlanning';
+import { Feather } from '@expo/vector-icons';
+import { Tooltip } from '@rneui/base';
 
 const Page = () => {
     const [opacity, setOpacity] = useState(1);
@@ -24,8 +26,10 @@ const Page = () => {
     const min = useSharedValue(0);
     const max = useSharedValue(1);
     const doSetPlanningRef = useRefStore((state) => state.DoSetPlanningRef);
-    const doSetGlobalPlanningRef = useRefStore(state => state.DoSetGlobalPlanningRef)
+    const doSetGlobalPlanningRef = useRefStore((state) => state.DoSetGlobalPlanningRef);
     const planningList = usePlanningStore((state) => state.listPlanningTree);
+    const mapType = useRefStore((state) => state.mapType);
+    const DoSetMapType = useRefStore((state) => state.DoSetMapType);
 
     const openBottomSheetPlanning = useCallback(() => {
         sheetPlanningRef.current?.expand();
@@ -47,9 +51,9 @@ const Page = () => {
     // useEffect funtion
     useEffect(() => {
         doSetPlanningRef(sheetPlanningIsShowingRef);
-        doSetGlobalPlanningRef(sheetPlanningRef)
+        doSetGlobalPlanningRef(sheetPlanningRef);
     }, [sheetPlanningRef, sheetPlanningIsShowingRef]);
-
+    const [open, setOpen] = useState<boolean>(false);
     return (
         <View className="flex-1 justify-center items-center relative">
             <StatusBar style="light" />
@@ -95,7 +99,72 @@ const Page = () => {
                     </Button>
                 </ScrollView>
             </View>
-
+            <View className="rounded-md p-2 bg-white absolute top-2 left-3">
+                <Tooltip
+                    visible={open}
+                    onOpen={() => setOpen(true)}
+                    onClose={() => {
+                        setOpen(false);
+                    }}
+                    overlayColor={'transparent'}
+                    backgroundColor={'white'}
+                    height={90}
+                    width={120}
+                    popover={
+                        <View className="w-full">
+                            <Text className="ml-2 font-medium">Kiểu bản đồ</Text>
+                            <TouchableOpacity
+                                onPress={() => {
+                                    DoSetMapType('standard')
+                                    setOpen(false)
+                                }}
+                                className="flex mt-2 items-center gap-3 flex-row"
+                            >
+                                <CheckBox
+                                    containerStyle={{
+                                        backgroundColor: 'transparent',
+                                        borderWidth: 0,
+                                        padding: 0,
+                                        margin: 0,
+                                    }}
+                                    className="w-0"
+                                    checked={mapType === 'standard'}
+                                    checkedColor="green"
+                                    checkedIcon="dot-circle-o"
+                                    size={20}
+                                    uncheckedIcon="circle-o"
+                                />
+                                <Text>Mặc định</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={() => {
+                                    setOpen(false)
+                                    DoSetMapType('hybrid')
+                                }}
+                                className="flex mt-2 items-center gap-3 flex-row"
+                            >
+                                <CheckBox
+                                    containerStyle={{
+                                        backgroundColor: 'transparent',
+                                        borderWidth: 0,
+                                        padding: 0,
+                                        margin: 0,
+                                    }}
+                                    className="w-0"
+                                    checkedColor="green"
+                                    checked={mapType === 'hybrid'}
+                                    checkedIcon="dot-circle-o"
+                                    size={20}
+                                    uncheckedIcon="circle-o"
+                                />
+                                <Text>Vệ tinh</Text>
+                            </TouchableOpacity>
+                        </View>
+                    }
+                >
+                    <Feather name="layers" size={24} color="black" />
+                </Tooltip>
+            </View>
             <View className="absolute bottom-[115px] right-[-40px] rotate-[-90deg]">
                 <Slider
                     progress={progress}
