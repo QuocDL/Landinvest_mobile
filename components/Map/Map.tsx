@@ -33,7 +33,7 @@ const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
         return null;
     };
     // Store State
-    const mapType = useRefStore(state=> state.mapType)
+    const mapType = useRefStore((state) => state.mapType);
     const sheetPlanningRef = useRefStore((state) => state.sheetPlanningRef);
     const {
         lat,
@@ -49,7 +49,7 @@ const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
     const doChangeImagePlanning = usePlanningStore((state) => state.changeImagePlanning);
     const doDoublePressSetPlanning = usePlanningStore((state) => state.doDoublePressAddPlanning);
     // MapState
-    const [imagePlanning, setImagePlanning] = useState<string[]>([]);
+    const [imagePlanning, setImagePlanning] = useState<string[] | null>(null);
     const [location, setLocation] = useState({
         latitude: 21.16972,
         longitude: 105.84944,
@@ -62,7 +62,6 @@ const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
     });
     const [districtName, setDistrictName] = useState<string | null>(null);
     const [idQueryMaps, setIdQueryMap] = useState<string | null>(null);
-    const [isVietNam, setCheckingCountry] = useState<boolean>();
     // Loading State
     const [loadingGoToUser, setLoadingGoToUser] = useState<boolean>(false);
     const [loadingGlobal, setLoadingGlobal] = useState<boolean>(false);
@@ -70,16 +69,12 @@ const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
     const onMoveMapEnd = async (newRegion: Region) => {
         const { latitude, longitude } = newRegion;
         if (mapRef.current) {
-            setLoadingGlobal(true);
             const data = await addressForCoordinate(latitude, longitude);
             if (data?.subAdministrativeArea) {
                 setDistrictName(data?.subAdministrativeArea || '');
-                setLoadingGlobal(false);
             }
             if (data) {
-                setCheckingCountry(data.countryCode === 'VN');
                 setLocationInfo(data as LocationData);
-                setLoadingGlobal(false);
             }
         }
     };
@@ -107,7 +102,7 @@ const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
         setLoadingGoToUser(true);
         try {
             const location = await Location.getCurrentPositionAsync({
-                accuracy: Location.Accuracy.BestForNavigation,
+                accuracy: Location.Accuracy.Balanced,
             });
             const { latitude, longitude, altitude } = location.coords;
             if (mapRef) {
@@ -148,54 +143,70 @@ const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
         }
     };
     const handleDoublePress = async (e: ClickEvent) => {
-        if (loadingGlobal || !isVietNam) {
-            Alert.alert('Chưa lấy được vị trí hiện tại vui lòng thử lại.');
-        } else {
-            try {
-                const { data: dataQuyHoach } = await axios.get<QuyHoachResponse[]>(
-                    `https://api.quyhoach.xyz/quyhoach1quan/${idQueryMaps}`,
-                );
-                if (dataQuyHoach.length) {
-                    const { centerLat, centerLon, latitudeDelta, longitudeDelta } =
-                        await getCenterOfBoundingBoxes(
-                            dataQuyHoach[0]?.location
-                                ? dataQuyHoach[0].location
-                                : dataQuyHoach[0].boundingbox,
-                        );
-                    if (
-                        centerLat !== null &&
-                        centerLon !== null &&
-                        latitudeDelta !== null &&
-                        longitudeDelta !== null &&
-                        !listImagePlanning?.includes(dataQuyHoach[0].huyen_image)
-                    ) {
-                        mapRef.current?.animateToRegion(
-                            {
+        try {
+            setLoadingGlobal(true);
+            const { latitude, longitude } = e.nativeEvent.coordinate;
+            const info = await addressForCoordinate(latitude, longitude);
+            // const infoProvince = await addressForCoordinate()
+            if (info?.countryCode === 'VN') {
+                try {
+                    const apiNameDistrict = removeAccents(info.subAdministrativeArea.toLowerCase())
+                        .split('.')
+                        .pop();
+                    const { data: searchIdDistrict } = await axios.get(
+                        `https://api.quyhoach.xyz/quyhoach/search/${apiNameDistrict}`,
+                    );
+                    const { data: dataQuyHoach } = await axios.get<QuyHoachResponse[]>(
+                        `https://api.quyhoach.xyz/quyhoach1quan/${searchIdDistrict.Posts[0].idDistrict}`,
+                    );
+                    if (dataQuyHoach.length) {
+                        const { centerLat, centerLon, latitudeDelta, longitudeDelta } =
+                            await getCenterOfBoundingBoxes(
+                                dataQuyHoach[0]?.location
+                                    ? dataQuyHoach[0].location
+                                    : dataQuyHoach[0].boundingbox,
+                            );
+                        if (
+                            centerLat !== null &&
+                            centerLon !== null &&
+                            latitudeDelta !== null &&
+                            longitudeDelta !== null &&
+                            !listImagePlanning?.includes(dataQuyHoach[0].huyen_image)
+                        ) {
+                            await mapRef.current?.animateToRegion(
+                                {
+                                    latitude: centerLat,
+                                    longitude: centerLon,
+                                    latitudeDelta: 0.13527821510000138,
+                                    longitudeDelta: 0.0966010987000061,
+                                },
+                                1000,
+                            );
+                            setLocation({
                                 latitude: centerLat,
                                 longitude: centerLon,
-                                latitudeDelta: latitudeDelta,
-                                longitudeDelta: longitudeDelta,
-                            },
-                            1000,
-                        );
-                        setLocation({
-                            latitude: centerLat,
-                            longitude: centerLon,
-                        });
-                        doDoublePressSetPlanning(dataQuyHoach);
-                        sheetPlanningRef?.current?.expand();
-                        doChangeImagePlanning(dataQuyHoach[0].huyen_image);
-                        doAddPlanningList({
-                            name: dataQuyHoach[0].ten_quan as string,
-                            planning: dataQuyHoach,
-                        });
+                            });
+                            doDoublePressSetPlanning(dataQuyHoach);
+                            sheetPlanningRef?.current?.expand();
+                            doChangeImagePlanning(dataQuyHoach[0].huyen_image);
+                            doAddPlanningList({
+                                name: dataQuyHoach[0].ten_quan as string,
+                                planning: dataQuyHoach,
+                            });
+                        }
+                        setLoadingGlobal(false);
+                    } else {
+                        Alert.alert('Lỗi hệ thống vui lòng thử lại sau');
+                        setLoadingGlobal(false);
                     }
-                } else {
-                    Alert.alert('Lỗi hệ thống vui lòng thử lại sau');
+                } catch (error) {
+                    Alert.alert('Chưa có quy hoạch tại Quận/Huyện này.');
+                    console.log(error);
                 }
-            } catch (error) {
-                console.log(error);
             }
+        } catch (error) {
+            setLoadingGlobal(false);
+            console.log(error);
         }
     };
     // Effect Function
@@ -231,16 +242,20 @@ const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
                 mapRef.current?.animateToRegion({
                     latitude: lat,
                     longitude: lon,
-                    latitudeDelta: latDeltaGlobal || region.latitudeDelta,
-                    longitudeDelta: lonDeltaGlobal || region.longitudeDelta,
+                    latitudeDelta:
+                        latDeltaGlobal && latDeltaGlobal < 0.13527821510000138
+                            ? (latDeltaGlobal as number)
+                            : 0.13527821510000138,
+                    longitudeDelta:
+                        lonDeltaGlobal && lonDeltaGlobal < 0.0966010987000061
+                            ? (latDeltaGlobal as number)
+                            : 0.0966010987000061,
                 });
             }
         }
     }, [lat, lon]);
     useEffect(() => {
-        if (listImagePlanning !== null) {
-            setImagePlanning(listImagePlanning);
-        }
+        setImagePlanning(listImagePlanning);
     }, [listImagePlanning]);
     return (
         <>
@@ -266,16 +281,17 @@ const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
                     />
                 </Marker>
 
-                {imagePlanning.map((item, index) => (
-                    <UrlTile
-                        key={index}
-                        urlTemplate={`${item}/{z}/{x}/{y}`}
-                        maximumZ={25}
-                        opacity={opacity}
-                        offlineMode
-                        zIndex={-2}
-                    />
-                ))}
+                {imagePlanning &&
+                    imagePlanning.map((item, index) => (
+                        <UrlTile
+                            key={index}
+                            urlTemplate={`${item}/{z}/{x}/{y}`}
+                            maximumZ={25}
+                            opacity={opacity}
+                            offlineMode
+                            zIndex={-2}
+                        />
+                    ))}
             </MapView>
             {loadingGlobal && (
                 <View className="absolute  flex flex-row bottom-14 left-2 items-start w-screen">

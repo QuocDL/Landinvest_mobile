@@ -24,7 +24,8 @@ import {
     View,
 } from 'react-native';
 import Collapsible from 'react-native-collapsible';
-
+import removeAccents, { remove } from 'remove-accents';
+import { useDebounce } from 'use-debounce';
 export type Ref = BottomSheetModal;
 interface CollapseState {
     [key: number]: boolean;
@@ -36,6 +37,7 @@ const BottomSheetPlanning = forwardRef<Ref, { dismiss: () => void }>((props, ref
     const [collapseDistrictState, setCollapseDistrictState] = useState<CollapseState>({});
     const [filter, setFilter] = useState<boolean>(false);
     const [listProvince, setListProvince] = useState<IAllProvincePlanningResponse[] | null>(null);
+    const [listProvinceFiltered, setFilteredListProvince] = useState(null);
     const [loadingExpand, setLoadingExpand] = useState<{
         province: CollapseState;
         district: CollapseState;
@@ -154,7 +156,46 @@ const BottomSheetPlanning = forwardRef<Ref, { dismiss: () => void }>((props, ref
             }
         }
     };
-
+    const onPressChooseDistrict = async (
+        item: IAllDistrictInProvinceResponse,
+        provincePlanning: string,
+    ) => {
+        const districtImage = item.quyhoach
+            .flat()
+            .filter((q) => q.huyen_image)
+            .map((q) => q.huyen_image);
+        const hasMatchingImage = listImagePlanning?.some((imageItem) =>
+            districtImage.includes(imageItem),
+        );
+        if (hasMatchingImage) {
+            const planningIsShowing = listImagePlanning?.filter((image) =>
+                districtImage.includes(image),
+            );
+            planningIsShowing?.forEach((item) => changeImagePlanning(item));
+            return;
+        }
+        if (listImagePlanning?.includes(provincePlanning)) {
+            changeImagePlanning(provincePlanning);
+            return;
+        }
+        item.quyhoach.forEach((imagePlaning) => changeImagePlanning(imagePlaning.huyen_image));
+        const boundingBox = item.quyhoach.map((item) => {
+            return item.location ? item.location : item.boundingbox;
+        });
+        const { centerLat, centerLon, latitudeDelta, longitudeDelta } =
+            await getCenterOfBoundingBoxes(boundingBox[0]);
+        doSetNewLocation({
+            lat: centerLat as number,
+            lon: centerLon as number,
+            latitudeDelta,
+            longitudeDelta,
+        });
+        // set vào state PLanning tree để hiển thị lên những nơi đang được quy hoạch trong sheetIsShowing
+        doSetPlaningTree({
+            name: item.name_huyen,
+            planning: item.quyhoach,
+        });
+    };
     // Handle collapse toggle
     const toggleCollapseProvince = (item: any) => {
         setCollapseProvinceState((prevState) => ({
@@ -209,7 +250,82 @@ const BottomSheetPlanning = forwardRef<Ref, { dismiss: () => void }>((props, ref
             }
         })();
     }, []);
+    // Search function
+    const [searchQuery, setSearchQuery] = useState(''); // State to track the search query
+    const [debouncedSearchQuery] = useDebounce(searchQuery, 500); // Debounce the search query for 800ms
 
+    // This useEffect will only trigger when debouncedSearchQuery has changed
+
+    const onChangeSearchPlanning = (searchQuery: string) => {
+        const normalizedQuery = removeAccents(searchQuery.toLowerCase());
+
+        const filteredSearch = listProvince
+            ?.map((item) => {
+                const normalizedFilterNameTinh = removeAccents(item.name_tinh.toLowerCase());
+                let foundInProvince = false;
+                let isDistrict = false;
+                let matchingDistricts: any[] = [];
+
+                if (normalizedFilterNameTinh.includes(normalizedQuery)) {
+                    foundInProvince = true;
+                    matchingDistricts = item.quan_huyen_1_tinh;
+                }
+
+                if (!foundInProvince) {
+                    // Lọc qua các huyện của tỉnh để tìm kiếm theo tên huyện
+                    matchingDistricts = item.quan_huyen_1_tinh?.filter((huyen) => {
+                        const normalizedFilterNameHuyen = removeAccents(
+                            huyen.name_huyen.toLowerCase(),
+                        );
+                        return normalizedFilterNameHuyen.includes(normalizedQuery);
+                    });
+
+                    if (matchingDistricts.length > 0) {
+                        foundInProvince = true;
+                        isDistrict = true;
+                    }
+                }
+
+                if (foundInProvince) {
+                    return {
+                        ...item,
+                        isDistrict,
+                        quan_huyen_1_tinh: matchingDistricts,
+                    };
+                }
+
+                return null;
+            })
+            .filter(Boolean);
+        setFilteredListProvince(filteredSearch as any);
+        if (filteredSearch && filteredSearch.length > 0 && filteredSearch.length < 5) {
+            setTimeout(() => {
+                filteredSearch.forEach((item) => {
+                    if (item?.isDistrict) {
+                        // Nếu tỉnh có huyện khớp, toggle trạng thái collapse
+                        setCollapseProvinceState((prev) => ({
+                            ...prev,
+                            [item.id_tinh]: true,
+                        }));
+                    }
+                });
+            }, 300);
+        } else if (filteredSearch && filteredSearch.length > 5) {
+            // Nếu không có kết quả tìm kiếm, reset tất cả các trạng thái collapse thành false
+            setCollapseProvinceState((prev) => {
+                const resetState = { ...prev };
+                Object.keys(resetState).forEach((key: any) => {
+                    if (resetState[key] === true) {
+                        resetState[key] = false;
+                    }
+                });
+                return resetState;
+            });
+        }
+    };
+    React.useEffect(() => {
+        onChangeSearchPlanning(debouncedSearchQuery);
+    }, [debouncedSearchQuery]);
     return (
         <BottomSheet
             backdropComponent={renderBackdrop}
@@ -225,32 +341,20 @@ const BottomSheetPlanning = forwardRef<Ref, { dismiss: () => void }>((props, ref
                 {listProvince && (
                     <FlatList
                         className="min-h-full px-2 pt-2"
-                        data={listProvince}
+                        data={listProvinceFiltered ? listProvinceFiltered : listProvince}
+                        ListEmptyComponent={
+                            <View className="flex justify-center items-center h-full">
+                                <Text className="text-center font-semibold text-lg">
+                                    Không tìm thấy với từ khóa: <Text className='text-red-500'>{debouncedSearchQuery}</Text>
+                                </Text>
+                            </View>
+                        }
                         ListHeaderComponent={
                             <View>
-                                <View className="flex flex-row pb-2 gap-2 items-center">
-                                    <Button
-                                        className="h-10"
-                                        buttonStyle={[
-                                            styles.buttonYearStyle,
-                                            !filter && styles.activeYear,
-                                        ]}
-                                    >
-                                        <Text className={'text-white'}>Tất cả</Text>
-                                    </Button>
-                                    <Button
-                                        className="h-10"
-                                        buttonStyle={[
-                                            styles.buttonYearStyle,
-                                            filter && styles.activeYear,
-                                        ]}
-                                    >
-                                        <Text className={'text-white'}>Đang được hiện thị</Text>
-                                    </Button>
-                                </View>
                                 <View className=" py-1 bg-white">
                                     <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
                                         <TextInput
+                                            onChangeText={(text) => setSearchQuery(text)}
                                             placeholder="Tìm kiếm"
                                             placeholderTextColor={'#7777'}
                                             className="border border-[#7777] rounded px-3 h-10 flex flex-row items-center text-base"
@@ -328,8 +432,9 @@ const BottomSheetPlanning = forwardRef<Ref, { dismiss: () => void }>((props, ref
                                                     : false
                                             }
                                             onPress={() => onPressChooseProvince(item)}
-                                            size={19}
+                                            size={24}
                                             containerStyle={{
+                                                padding: 0,
                                                 backdropFilter: 'transparent',
                                                 backgroundColor: 'transparent',
                                             }}
@@ -360,9 +465,17 @@ const BottomSheetPlanning = forwardRef<Ref, { dismiss: () => void }>((props, ref
                                             className="pl-4"
                                             data={item.quan_huyen_1_tinh}
                                             keyExtractor={(item, index) => index.toString()}
-                                            renderItem={({ item: district }) =>
-                                                district.quyhoach &&
-                                                district.quyhoach.length > 0 ? (
+                                            renderItem={({ item: district }) => {
+                                                const hasImagePlanning = listImagePlanning
+                                                    ? listImagePlanning.includes(item.link_image) ||
+                                                      listImagePlanning.some((image) =>
+                                                          district.quyhoach.some(
+                                                              (item) => item.huyen_image === image,
+                                                          ),
+                                                      )
+                                                    : false;
+                                                return district.quyhoach &&
+                                                    district.quyhoach.length > 0 ? (
                                                     <>
                                                         <TouchableOpacity
                                                             onPress={() => {
@@ -403,6 +516,26 @@ const BottomSheetPlanning = forwardRef<Ref, { dismiss: () => void }>((props, ref
                                                                 {district.name_huyen} -{' '}
                                                                 {district.id_huyen} - {item.id_tinh}
                                                             </Text>
+                                                            <CheckBox
+                                                                checked={hasImagePlanning}
+                                                                onPress={() =>
+                                                                    onPressChooseDistrict(
+                                                                        district,
+                                                                        item.link_image,
+                                                                    )
+                                                                }
+                                                                size={24}
+                                                                containerStyle={{
+                                                                    padding: 0,
+                                                                    backdropFilter: 'transparent',
+                                                                    backgroundColor: 'transparent',
+                                                                }}
+                                                                // Use ThemeProvider to make change for all checkbox
+                                                                iconType="material-community"
+                                                                checkedIcon="checkbox-marked"
+                                                                uncheckedIcon="checkbox-blank-outline"
+                                                                checkedColor="green"
+                                                            />
                                                         </TouchableOpacity>
                                                         <Collapsible
                                                             renderChildrenCollapsed={false}
@@ -426,29 +559,44 @@ const BottomSheetPlanning = forwardRef<Ref, { dismiss: () => void }>((props, ref
                                                                         listImagePlanning
                                                                             ? listImagePlanning?.includes(
                                                                                   planning.huyen_image,
+                                                                              ) ||
+                                                                              listImagePlanning.includes(
+                                                                                  item.link_image,
                                                                               )
                                                                             : false;
                                                                     return (
                                                                         <TouchableOpacity
                                                                             onPress={() =>
-                                                                                onPressChoosePlanning(
-                                                                                    planning,
-                                                                                    district,
+                                                                                listImagePlanning?.includes(
+                                                                                    item.link_image,
                                                                                 )
+                                                                                    ? changeImagePlanning(
+                                                                                          item.link_image,
+                                                                                      )
+                                                                                    : onPressChoosePlanning(
+                                                                                          planning,
+                                                                                          district,
+                                                                                      )
                                                                             }
                                                                             className={`flex mt-2 flex-row items-center pr-3 h-12 relative rounded border-[1px] border-[#777777] `}
                                                                         >
                                                                             <CheckBox
-                                                                                className="h-10"
                                                                                 checked={hasImage}
                                                                                 onPress={() =>
-                                                                                    onPressChoosePlanning(
-                                                                                        planning,
-                                                                                        district,
+                                                                                    listImagePlanning?.includes(
+                                                                                        item.link_image,
                                                                                     )
+                                                                                        ? changeImagePlanning(
+                                                                                              item.link_image,
+                                                                                          )
+                                                                                        : onPressChoosePlanning(
+                                                                                              planning,
+                                                                                              district,
+                                                                                          )
                                                                                 }
-                                                                                size={14}
+                                                                                size={22}
                                                                                 containerStyle={{
+                                                                                    padding: 0,
                                                                                     backdropFilter:
                                                                                         'transparent',
                                                                                     backgroundColor:
@@ -477,8 +625,8 @@ const BottomSheetPlanning = forwardRef<Ref, { dismiss: () => void }>((props, ref
                                                             />
                                                         </Collapsible>
                                                     </>
-                                                ) : null
-                                            }
+                                                ) : null;
+                                            }}
                                         />
                                     </Collapsible>
                                 </View>

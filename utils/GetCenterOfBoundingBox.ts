@@ -9,10 +9,9 @@ export async function getCenterOfBoundingBoxes(boundingBoxes: any) {
             boundingBoxes = boundingBoxes.split(',').map((item: string) => parseFloat(item.trim()));  // Tách chuỗi thành mảng số
         }
     }
-
     // Kiểm tra dữ liệu sau khi xử lý chuỗi
     if (!Array.isArray(boundingBoxes) || boundingBoxes.length < 4) {
-        throw new Error('Dữ liệu không hợp lệ, phải là mảng hoặc chuỗi hợp lệ');
+        throw new Error('Dữ liệu không hợp lệ, phải là mảng hoặc chuỗi hợp lệ')
     }
 
     // Tính toán min/max của từng phần tử trong bounding box

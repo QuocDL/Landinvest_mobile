@@ -16,6 +16,7 @@ type Action = {
     changeImagePlanning: (planningImage: string) => void;
     doRemoveDistrictWithPlaningList: (planningList: QuyHoachResponse[]) => void;
     doDoublePressAddPlanning: (num: QuyHoachResponse[] | null) => void;
+    doRemoveAllPlanning: ()=> void
 };
 
 type Store = State & Action;
@@ -25,6 +26,7 @@ export const usePlanningStore = create<Store>((set) => ({
     listPlanningImage: null,
     // GLOBALPLANNING TREE
     doDoublePressAddPlanning: (num) => set({listPlanningItemDoublePress: num}),
+    doRemoveAllPlanning: ()=> set({listPlanningTree: null, listPlanningImage: null}),
     doAddListPlanningTree: (newPlanning) =>
         set((state) => {
             const isExist = state.listPlanningTree?.some(

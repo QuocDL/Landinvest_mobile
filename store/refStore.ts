@@ -1,5 +1,6 @@
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import React from "react";
+import { Platform } from "react-native";
 import { MapType } from "react-native-maps";
 import { create } from "zustand";
 
@@ -17,7 +18,7 @@ interface Action {
 type Store = State & Action
 
 const useRefStore = create<Store>((set)=>({
-    mapType: 'standard',
+    mapType: Platform.OS === 'android' ?'standard' : 'hybridFlyover',
     sheetPlanningRef: null,
     sheetGlobalPlanningRef: null,
     DoSetMapType: (map)=> set({mapType: map}),

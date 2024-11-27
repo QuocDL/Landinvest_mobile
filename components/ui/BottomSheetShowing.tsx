@@ -32,13 +32,14 @@ const BottomSheetShowing = forwardRef<Ref, { dismiss: () => void }>((props, ref)
     // Component State
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [listDistrict, setListDistrict] = useState<IListPlanning[] | null>(null);
-    const [listPlanning, setListPlanning] = useState<QuyHoachResponse[] | null>(null);
+    const [listPlanning, setListPlanning] = useState<IPlanningResponse[] | null>(null);
     const [districtName, setDistrictName] = useState<string | null>(null);
     // State
     const listImagePlanning = usePlanningStore((state) => state.listPlanningImage);
     const listPlanningTree = usePlanningStore((state) => state.listPlanningTree);
     const doublePressListPlanning = usePlanningStore((state) => state.listPlanningItemDoublePress);
     // dispatch
+    const doRemoveAllPlanning = usePlanningStore((state) => state.doRemoveAllPlanning);
     const changeImagePlanning = usePlanningStore((state) => state.changeImagePlanning);
     const doSetLatLon = useSearchStore((state) => state.doSetSearchResult);
     const doRemoveDistrictTreeWithPlanningList = usePlanningStore(
@@ -101,6 +102,16 @@ const BottomSheetShowing = forwardRef<Ref, { dismiss: () => void }>((props, ref)
     };
     const handleHiddenDistrictPlanning = (item: IListPlanning) => {
         doRemoveDistrictTreeWithPlanningList(item.planning);
+    };
+    const onPressGoToLocation = async (boundingBox: string) => {
+        const { centerLat, centerLon, latitudeDelta, longitudeDelta } =
+            await getCenterOfBoundingBoxes(boundingBox);
+        doSetLatLon({
+            lat: centerLat as number,
+            lon: centerLon as number,
+            latitudeDelta,
+            longitudeDelta,
+        });
     };
     // useEffect function
     useEffect(() => {
@@ -186,9 +197,16 @@ const BottomSheetShowing = forwardRef<Ref, { dismiss: () => void }>((props, ref)
                                         className="border border-[#7777] rounded px-3 py-2 text-base"
                                     />
                                 </TouchableWithoutFeedback>
-                                <Text className="py-1.5 font-medium">
-                                    Danh sách quy hoạch đang được hiển thị
-                                </Text>
+                                <View className="flex flex-row justify-between">
+                                    <Text className="py-1.5 font-medium">
+                                        Danh sách quy hoạch đang được hiển thị
+                                    </Text>
+                                    <TouchableOpacity onPress={() => doRemoveAllPlanning()}>
+                                        <Text className="py-1.5 text-sm text-[#777777]">
+                                            Bỏ hiển thị
+                                        </Text>
+                                    </TouchableOpacity>
+                                </View>
                             </View>
                         }
                         className="min-h-full px-2"
@@ -286,6 +304,24 @@ const BottomSheetShowing = forwardRef<Ref, { dismiss: () => void }>((props, ref)
                                         {' | '}
                                         {item.id_quyhoach || item.id + ' - ' + item.idDistrict}
                                     </Text>
+                                    <View>
+                                        <TouchableOpacity
+                                            onPress={() =>
+                                                onPressGoToLocation(
+                                                    item.location
+                                                        ? item.location
+                                                        : item.boundingbox,
+                                                )
+                                            }
+                                            className="bg-slate-200 py-1.5 px-2 rounded-full"
+                                        >
+                                            <FontAwesome
+                                                name="location-arrow"
+                                                size={18}
+                                                color="black"
+                                            />
+                                        </TouchableOpacity>
+                                    </View>
                                 </TouchableOpacity>
                             )}
                         />
