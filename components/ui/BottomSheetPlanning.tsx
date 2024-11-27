@@ -609,12 +609,12 @@ const BottomSheetPlanning = forwardRef<Ref, { dismiss: () => void }>((props, ref
                                                                             />
                                                                             <Text
                                                                                 numberOfLines={2}
-                                                                                className="flex-1 font-medium ml-2 text-base"
+                                                                                className="flex-1 font-medium ml-2 text-sm"
                                                                             >
                                                                                 {
                                                                                     planning.description
                                                                                 }{' '}
-                                                                                -{' '}
+                                                                                -{' '}{planning.idDistrict} - 
                                                                                 {
                                                                                     planning.id_quyhoach
                                                                                 }
