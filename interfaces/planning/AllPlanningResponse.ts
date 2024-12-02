@@ -1,5 +1,5 @@
 
-interface IPlanningResponse {
+export interface IPlanningResponse {
     boundingbox: string;
     coordation: string;
     description: string;
@@ -11,14 +11,22 @@ interface IPlanningResponse {
     ten_quan?: string;
     location: string;
 }
-interface IAllDistrictInProvinceResponse {
+export interface IAllDistrictInProvinceResponse {
     id_huyen: number;
     name_huyen: string;
     quyhoach: IPlanningResponse[];
 }
-interface IAllProvincePlanningResponse {
+export interface IAllProvincePlanningResponse {
     id_tinh: number;
     link_image: string;
     name_tinh: string;
     quan_huyen_1_tinh: IAllDistrictInProvinceResponse[];
+}
+
+export interface IResponseGetDistrictId {
+    diachi: string;
+    district: number;
+    message: string;
+    provinces: number;
+    status: number;
 }

@@ -8,11 +8,13 @@ interface State {
     mapType: MapType;
     sheetPlanningRef: React.RefObject<BottomSheetModal> | null
     sheetGlobalPlanningRef: React.RefObject<BottomSheetModal> | null
+    sheetImageBoundingRef: React.RefObject<BottomSheetModal> | null
 }
 interface Action {
     DoSetMapType: (map: MapType)=> void
     DoSetPlanningRef: (ref: React.RefObject<BottomSheetModal>)=> void
     DoSetGlobalPlanningRef: (ref: React.RefObject<BottomSheetModal>)=> void
+    DoSetImageBoundingRef: (ref: React.RefObject<BottomSheetModal>)=> void
 }
 
 type Store = State & Action
@@ -21,9 +23,11 @@ const useRefStore = create<Store>((set)=>({
     mapType: Platform.OS === 'android' ?'standard' : 'hybridFlyover',
     sheetPlanningRef: null,
     sheetGlobalPlanningRef: null,
+    sheetImageBoundingRef: null,
     DoSetMapType: (map)=> set({mapType: map}),
     DoSetPlanningRef: (ref)=> set({sheetPlanningRef: ref}),
-    DoSetGlobalPlanningRef: (ref)=> set({sheetGlobalPlanningRef: ref})
+    DoSetGlobalPlanningRef: (ref)=> set({sheetGlobalPlanningRef: ref}),
+    DoSetImageBoundingRef: (ref)=> set({sheetImageBoundingRef: ref})
 }))
 
 export default useRefStore

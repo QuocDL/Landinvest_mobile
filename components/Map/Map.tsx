@@ -1,21 +1,28 @@
 import { CheckpointsIcon, RecyclebinIcon } from '@/assets/icons';
 import { LocationData, QuyHoachResponse } from '@/constants/interface';
+import { PlanningServices } from '@/service/PlanningServices';
 import { usePlanningStore } from '@/store/planningStore';
 import useMarkerStore from '@/store/quyhoachStore';
 import useRefStore from '@/store/refStore';
 import useSearchStore from '@/store/searchStore';
 import { getCenterOfBoundingBoxes } from '@/utils/GetCenterOfBoundingBox';
 import { requestLocationPermission } from '@/utils/Permission';
-import { Feather } from '@expo/vector-icons';
+import { Entypo, Feather } from '@expo/vector-icons';
 import SimpleLineIcons from '@expo/vector-icons/SimpleLineIcons';
 import { Divider } from '@rneui/themed';
 import axios from 'axios';
 import * as Location from 'expo-location';
-import React, { memo, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Image, StyleSheet, TouchableOpacity, View } from 'react-native';
+import React, { memo, useEffect, useRef, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    Image,
+    StyleSheet,
+    TouchableOpacity,
+    View,
+} from 'react-native';
 import MapView, { ClickEvent, MapPressEvent, Marker, Region, UrlTile } from 'react-native-maps';
-import { tags } from 'react-native-svg/lib/typescript/xmlTags';
-import removeAccents from 'remove-accents';
 type IMapsPropsType = {
     setLocationInfo: (data: LocationData) => void;
     opacity: number;
@@ -42,12 +49,14 @@ const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
         longitudeDelta: lonDeltaGlobal,
     } = useSearchStore((state) => state);
     const listImagePlanning = usePlanningStore((state) => state.listPlanningImage);
+    const listImageBoundingBox = usePlanningStore((state) => state.boundingBoxImage);
     // Store Dispatch
     const doSetDistrictId = useSearchStore((state) => state.doSetDistrictId);
     const doRemovePlanningList = useMarkerStore((state) => state.doRemovePlanningList);
     const doAddPlanningList = usePlanningStore((state) => state.doAddListPlanningTree);
     const doChangeImagePlanning = usePlanningStore((state) => state.changeImagePlanning);
     const doDoublePressSetPlanning = usePlanningStore((state) => state.doDoublePressAddPlanning);
+    const doSetListImageBoundingBox = usePlanningStore((state) => state.doSetListImageBoudingBox);
     // MapState
     const [imagePlanning, setImagePlanning] = useState<string[] | null>(null);
     const [location, setLocation] = useState({
@@ -61,15 +70,35 @@ const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
         longitudeDelta: 0.1,
     });
     const [districtName, setDistrictName] = useState<string | null>(null);
-    const [idQueryMaps, setIdQueryMap] = useState<string | null>(null);
     // Loading State
     const [loadingGoToUser, setLoadingGoToUser] = useState<boolean>(false);
     const [loadingGlobal, setLoadingGlobal] = useState<boolean>(false);
     // Function On Change
     const onMoveMapEnd = async (newRegion: Region) => {
-        const { latitude, longitude } = newRegion;
+        const { latitude, longitude, latitudeDelta } = newRegion;
+
         if (mapRef.current) {
             const data = await addressForCoordinate(latitude, longitude);
+            if (latitudeDelta < 0.065) {
+                const boudingBox = await mapRef.current.getMapBoundaries();
+                const params = [
+                    boudingBox.southWest.longitude,
+                    boudingBox.southWest.latitude,
+                    boudingBox.northEast.longitude,
+                    boudingBox.northEast.latitude,
+                ];
+                const boudingBoxImageData = await PlanningServices.getListImagesByBoundingBox(
+                    params,
+                );
+                if (boudingBoxImageData.list_image.length > 0) {
+                    doSetListImageBoundingBox(boudingBoxImageData.list_image);
+                } else {
+                    doSetListImageBoundingBox(null);
+                }
+            } else {
+                doSetListImageBoundingBox(null);
+            }
+
             if (data?.subAdministrativeArea) {
                 setDistrictName(data?.subAdministrativeArea || '');
             }
@@ -129,14 +158,21 @@ const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
     const handlePressMap = async (e: MapPressEvent) => {
         try {
             const { latitude, longitude } = e.nativeEvent.coordinate;
-            const data = await addressForCoordinate(latitude, longitude);
-            setLocationInfo(data as LocationData);
-            setLocation({
-                latitude,
-                longitude,
+            const checkLocation = listImageBoundingBox?.some((item) => {
+                const [lat, lon] = item.location.split(',').map(Number);
+                return lat === latitude && lon === longitude;
             });
-            moveToLocation(latitude, longitude);
-            setLoadingGlobal(false);
+            if (!checkLocation) {
+                const data = await addressForCoordinate(latitude, longitude);
+
+                setLocationInfo(data as LocationData);
+                setLocation({
+                    latitude,
+                    longitude,
+                });
+                moveToLocation(latitude, longitude);
+                setLoadingGlobal(false);
+            }
         } catch (error) {
             setLoadingGlobal(false);
             Alert.alert('Thao tác quá nhanh vui lòng thử lại!');
@@ -150,14 +186,12 @@ const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
             // const infoProvince = await addressForCoordinate()
             if (info?.countryCode === 'VN') {
                 try {
-                    const apiNameDistrict = removeAccents(info.subAdministrativeArea.toLowerCase())
-                        .split('.')
-                        .pop();
-                    const { data: searchIdDistrict } = await axios.get(
-                        `https://api.quyhoach.xyz/quyhoach/search/${apiNameDistrict}`,
-                    );
+                    const searchIdDistrict = await PlanningServices.getDistrictIdByLocation([
+                        latitude,
+                        longitude,
+                    ]);
                     const { data: dataQuyHoach } = await axios.get<QuyHoachResponse[]>(
-                        `https://api.quyhoach.xyz/quyhoach1quan/${searchIdDistrict.Posts[0].idDistrict}`,
+                        `https://api.quyhoach.xyz/quyhoach1quan/${searchIdDistrict.district}`,
                     );
                     if (dataQuyHoach.length) {
                         const { centerLat, centerLon, latitudeDelta, longitudeDelta } =
@@ -187,7 +221,9 @@ const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
                                 longitude: centerLon,
                             });
                             doDoublePressSetPlanning(dataQuyHoach);
-                            sheetPlanningRef?.current?.expand();
+                            if (dataQuyHoach.length > 1) {
+                                sheetPlanningRef?.current?.expand();
+                            }
                             doChangeImagePlanning(dataQuyHoach[0].huyen_image);
                             doAddPlanningList({
                                 name: dataQuyHoach[0].ten_quan as string,
@@ -200,8 +236,7 @@ const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
                         setLoadingGlobal(false);
                     }
                 } catch (error) {
-                    Alert.alert('Chưa có quy hoạch tại Quận/Huyện này.');
-                    console.log(error);
+                    Alert.alert('Lỗi hệ thống vui lòng thử lại sau');
                 }
             }
         } catch (error) {
@@ -209,35 +244,16 @@ const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
             console.log(error);
         }
     };
-    // Effect Function
-    useEffect(() => {
-        const getIdDistrictData = async () => {
-            if (districtName) {
-                try {
-                    const apiNameDistrict = removeAccents(districtName.toLowerCase())
-                        .split('.')
-                        .pop();
-                    const { data: getIdDistrict } = await axios.get(
-                        `https://api.quyhoach.xyz/quyhoach/search/${apiNameDistrict}`,
-                    );
-                    if (getIdDistrict.Posts[0]) {
-                        setIdQueryMap(getIdDistrict.Posts[0].idDistrict);
-                    }
-                } catch (error) {
-                    doSetDistrictId(null);
-                    setIdQueryMap(null);
-                    doRemovePlanningList();
-                }
-            } else {
-                setIdQueryMap(null);
-            }
-        };
-        getIdDistrictData();
-    }, [districtName]);
     // useEffect funtion state global
     useEffect(() => {
         if (lat !== 0 && lon !== 0) {
-            setLocation({ latitude: lat, longitude: lon });
+            const checkLocation = listImageBoundingBox?.some((item) => {
+                const [latState, lonState] = item.location.split(',').map(Number);
+                return latState === lat && lonState === lon;
+            });
+            if (!checkLocation) {
+                setLocation({ latitude: lat, longitude: lon });
+            }
             if (mapRef) {
                 mapRef.current?.animateToRegion({
                     latitude: lat,
@@ -270,25 +286,42 @@ const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
                 }}
                 mapType={mapType}
                 onPress={handlePressMap}
-                onLongPress={(e) => console.log(e)}
+                onLongPress={(e) => console.log('longPress')}
                 onDoublePress={handleDoublePress}
                 onRegionChangeComplete={onChangeRegionMap}
             >
-                <Marker coordinate={location}>
+                <Marker zIndex={10} coordinate={location}>
                     <Image
                         source={require('@/assets/images/marker.png')}
                         style={{ width: 40, height: 40, resizeMode: 'contain' }}
                     />
                 </Marker>
-
+                {listImageBoundingBox &&
+                    listImageBoundingBox.map((item, index) => {
+                        const locationArr = item.location.split(',');
+                        const convertLocation = {
+                            latitude: parseFloat(locationArr[0]),
+                            longitude: parseFloat(locationArr[1]),
+                        };
+                        return (
+                            <Marker
+                                key={index}
+                                zIndex={5}
+                                icon={undefined}
+                                coordinate={convertLocation}
+                            >
+                                <Entypo name="location-pin" size={28} color="red" />
+                            </Marker>
+                        );
+                    })}
                 {imagePlanning &&
                     imagePlanning.map((item, index) => (
-                        <UrlTile
+                        <MemoizedUrlTile
                             key={index}
                             urlTemplate={`${item}/{z}/{x}/{y}`}
                             maximumZ={25}
                             opacity={opacity}
-                            offlineMode
+                            maximumNativeZ={18}
                             zIndex={-2}
                         />
                     ))}

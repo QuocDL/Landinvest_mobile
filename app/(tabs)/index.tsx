@@ -1,8 +1,8 @@
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
-import { Button, CheckBox } from '@rneui/themed';
+import { Button, CheckBox, Image } from '@rneui/themed';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Slider } from 'react-native-awesome-slider';
 import { useSharedValue } from 'react-native-reanimated';
 
@@ -12,25 +12,28 @@ import Colors from '@/constants/Colors';
 import { LocationData } from '@/constants/interface';
 import { usePlanningStore } from '@/store/planningStore';
 import useRefStore from '@/store/refStore';
-import BottomSheetShowing from '@/components/ui/BottomSheetShowing';
-import BottomSheetPlanning from '@/components/ui/BottomSheetPlanning';
 import { Feather } from '@expo/vector-icons';
 import { Tooltip } from '@rneui/base';
+import BottomSheetShowing from '@/components/ui/BottomSheet/BottomSheetShowing';
+import BottomSheetPlanning from '@/components/ui/BottomSheet/BottomSheetPlanning';
+import BottomSheetImage from '@/components/ui/BottomSheet/BottomSheetImage';
 
 const Page = () => {
     const [opacity, setOpacity] = useState(1);
     const [locationInfo, setLocationInfo] = useState<LocationData | null>(null);
     const sheetPlanningRef = useRef<BottomSheetModal>(null);
     const sheetPlanningIsShowingRef = useRef<BottomSheetModal>(null);
+    const sheetImageBoundingBoxRef = useRef<BottomSheetModal>(null);
     const progress = useSharedValue(1);
     const min = useSharedValue(0);
     const max = useSharedValue(1);
     const doSetPlanningRef = useRefStore((state) => state.DoSetPlanningRef);
     const doSetGlobalPlanningRef = useRefStore((state) => state.DoSetGlobalPlanningRef);
+
     const planningList = usePlanningStore((state) => state.listPlanningTree);
     const mapType = useRefStore((state) => state.mapType);
     const DoSetMapType = useRefStore((state) => state.DoSetMapType);
-
+    const listImageBoundingBox = usePlanningStore((state) => state.boundingBoxImage);
     const openBottomSheetPlanning = useCallback(() => {
         sheetPlanningRef.current?.expand();
     }, []);
@@ -43,7 +46,12 @@ const Page = () => {
     const handleBottomSheetPlanningIsShowingDismiss = useCallback(() => {
         sheetPlanningIsShowingRef.current?.dismiss();
     }, []);
-
+    const openBottomSheetImageBounding = useCallback(() => {
+        sheetImageBoundingBoxRef.current?.expand();
+    }, []);
+    const handleBottomImageBoundingDismiss = useCallback(() => {
+        sheetImageBoundingBoxRef.current?.dismiss();
+    }, []);
     const handleOpacityChange = useCallback((value: number) => {
         setOpacity(Number(value.toFixed(1)));
     }, []);
@@ -99,6 +107,20 @@ const Page = () => {
                     </Button>
                 </ScrollView>
             </View>
+            {listImageBoundingBox && listImageBoundingBox.length !== 0 && (
+                <View className="rounded-md p-1 bg-white absolute top-2 left-16">
+                    <TouchableOpacity onPress={openBottomSheetImageBounding} className='relative'>
+                        <Image
+                            PlaceholderContent={<ActivityIndicator/>}
+                            style={{
+                                width: 32,
+                                height: 32,
+                            }}
+                            source={{ uri: listImageBoundingBox[0].imageHttp }}
+                        />
+                    </TouchableOpacity>
+                </View>
+            )}
             <View className="rounded-md p-2 bg-white absolute top-2 left-3">
                 <Tooltip
                     visible={open}
@@ -115,8 +137,8 @@ const Page = () => {
                             <Text className="ml-2 font-medium">Kiểu bản đồ</Text>
                             <TouchableOpacity
                                 onPress={() => {
-                                    DoSetMapType('standard')
-                                    setOpen(false)
+                                    DoSetMapType('standard');
+                                    setOpen(false);
                                 }}
                                 className="flex mt-2 items-center gap-3 flex-row"
                             >
@@ -138,8 +160,8 @@ const Page = () => {
                             </TouchableOpacity>
                             <TouchableOpacity
                                 onPress={() => {
-                                    setOpen(false)
-                                    DoSetMapType('hybrid')
+                                    setOpen(false);
+                                    DoSetMapType('hybrid');
                                 }}
                                 className="flex mt-2 items-center gap-3 flex-row"
                             >
@@ -184,6 +206,10 @@ const Page = () => {
             </View>
 
             {/* <BottomSheet dismiss={dismiss} ref={sheetRef} /> */}
+            <BottomSheetImage
+                dismiss={handleBottomImageBoundingDismiss}
+                ref={sheetImageBoundingBoxRef}
+            />
             <BottomSheetShowing
                 dismiss={handleBottomSheetPlanningIsShowingDismiss}
                 ref={sheetPlanningIsShowingRef}

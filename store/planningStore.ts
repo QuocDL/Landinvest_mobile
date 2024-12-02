@@ -1,4 +1,5 @@
 import { QuyHoachResponse } from '@/constants/interface';
+import { IListImageItem } from '@/interfaces/planning/BoundingBoxListImage';
 import { create } from 'zustand';
 type TreeType = {
     name: string;
@@ -9,6 +10,7 @@ type State = {
     listPlanningImage: string[] | null;
     listPlanningItemDoublePress: QuyHoachResponse[] | null;
     listPlanningTree: TreeType[] | null;
+    boundingBoxImage: IListImageItem[] | null;
 };
 type Action = {
     doAddListPlanningTree: (newPlanning: TreeType) => void;
@@ -16,6 +18,7 @@ type Action = {
     changeImagePlanning: (planningImage: string) => void;
     doRemoveDistrictWithPlaningList: (planningList: QuyHoachResponse[]) => void;
     doDoublePressAddPlanning: (num: QuyHoachResponse[] | null) => void;
+    doSetListImageBoudingBox: (boundingBoxImage: IListImageItem[] | null)=> void;
     doRemoveAllPlanning: ()=> void
 };
 
@@ -24,6 +27,7 @@ export const usePlanningStore = create<Store>((set) => ({
     listPlanningTree: null,
     listPlanningItemDoublePress: null,
     listPlanningImage: null,
+    boundingBoxImage: null,
     // GLOBALPLANNING TREE
     doDoublePressAddPlanning: (num) => set({listPlanningItemDoublePress: num}),
     doRemoveAllPlanning: ()=> set({listPlanningTree: null, listPlanningImage: null}),
@@ -85,4 +89,8 @@ export const usePlanningStore = create<Store>((set) => ({
                     : [...(state.listPlanningImage || []), planningImage], // Nếu chưa có, thêm ảnh vào, khởi tạo mảng rỗng nếu null
             };
         }),
+    // IMAGE BOUNDINGBOX
+    doSetListImageBoudingBox: (boundingBoxImage)=>{
+        set({boundingBoxImage: boundingBoxImage})
+    }
 }));

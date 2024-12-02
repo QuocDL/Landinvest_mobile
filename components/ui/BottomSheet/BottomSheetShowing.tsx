@@ -1,5 +1,6 @@
 import Colors from '@/constants/Colors';
 import { QuyHoachResponse } from '@/constants/interface';
+import { IPlanningResponse } from '@/interfaces/planning/AllPlanningResponse';
 import { usePlanningStore } from '@/store/planningStore';
 import useSearchStore from '@/store/searchStore';
 import { getCenterOfBoundingBoxes } from '@/utils/GetCenterOfBoundingBox';
@@ -231,10 +232,6 @@ const BottomSheetShowing = forwardRef<Ref, { dismiss: () => void }>((props, ref)
                                     setDistrictName(item.name);
                                 }}
                             >
-                                <Image
-                                    source={require('@/assets/images/quyhoach.png')}
-                                    className="h-full w-20 bg-contain rounded-sm"
-                                />
                                 <Text
                                     numberOfLines={1}
                                     className={`flex-1 font-medium ml-2 text-base`}
