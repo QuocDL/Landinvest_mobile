@@ -2,21 +2,29 @@ import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { Button, CheckBox, Image } from '@rneui/themed';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+    ActivityIndicator,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
 import { Slider } from 'react-native-awesome-slider';
 import { useSharedValue } from 'react-native-reanimated';
 
 import { MapLocationIcon } from '@/assets/icons';
 import Map from '@/components/Map/Map';
+import BottomSheetImage from '@/components/ui/BottomSheet/BottomSheetImage';
+import BottomSheetPlanning from '@/components/ui/BottomSheet/BottomSheetPlanning';
+import { BottomSheetPlanningAvailable } from '@/components/ui/BottomSheet/BottomSheetPlanningAvailable';
+import BottomSheetShowing from '@/components/ui/BottomSheet/BottomSheetShowing';
 import Colors from '@/constants/Colors';
 import { LocationData } from '@/constants/interface';
 import { usePlanningStore } from '@/store/planningStore';
 import useRefStore from '@/store/refStore';
 import { Feather } from '@expo/vector-icons';
 import { Tooltip } from '@rneui/base';
-import BottomSheetShowing from '@/components/ui/BottomSheet/BottomSheetShowing';
-import BottomSheetPlanning from '@/components/ui/BottomSheet/BottomSheetPlanning';
-import BottomSheetImage from '@/components/ui/BottomSheet/BottomSheetImage';
 
 const Page = () => {
     const [opacity, setOpacity] = useState(1);
@@ -24,21 +32,36 @@ const Page = () => {
     const sheetPlanningRef = useRef<BottomSheetModal>(null);
     const sheetPlanningIsShowingRef = useRef<BottomSheetModal>(null);
     const sheetImageBoundingBoxRef = useRef<BottomSheetModal>(null);
+    const sheetPlanningAvailableRef = useRef<BottomSheetModal>(null);
     const progress = useSharedValue(1);
     const min = useSharedValue(0);
     const max = useSharedValue(1);
-    const doSetPlanningRef = useRefStore((state) => state.DoSetPlanningRef);
-    const doSetGlobalPlanningRef = useRefStore((state) => state.DoSetGlobalPlanningRef);
-
+    // Store State
     const planningList = usePlanningStore((state) => state.listPlanningTree);
     const mapType = useRefStore((state) => state.mapType);
-    const DoSetMapType = useRefStore((state) => state.DoSetMapType);
     const listImageBoundingBox = usePlanningStore((state) => state.boundingBoxImage);
+    // Store dispatch
+    const doSetPlanningRef = useRefStore((state) => state.DoSetPlanningRef);
+    const doSetGlobalPlanningRef = useRefStore((state) => state.DoSetGlobalPlanningRef);
+    const doSetBoundingBoxRef = useRefStore((state) => state.DoSetImageBoundingRef);
+    const DoSetMapType = useRefStore((state) => state.DoSetMapType);
+    const doSetPlanningAvailableRef = useRefStore((state) => state.DoSetPlanningAvailableRef);
+    // Bottom Sheet dispatch OPEN
     const openBottomSheetPlanning = useCallback(() => {
         sheetPlanningRef.current?.expand();
     }, []);
+    const openBottomSheetImageBounding = useCallback(() => {
+        sheetImageBoundingBoxRef.current?.expand();
+    }, []);
     const openBottomSheetPlanningIsShowing = useCallback(() => {
         sheetPlanningIsShowingRef.current?.expand();
+    }, []);
+    const openBottomSheetAvailable = useCallback(() => {
+        sheetPlanningAvailableRef.current?.expand();
+    }, []);
+    // Bottom Sheet dispatch Dismiss
+    const handleBottomImageBoundingDismiss = useCallback(() => {
+        sheetImageBoundingBoxRef.current?.dismiss();
     }, []);
     const handleBottomSheetPlanningDismiss = useCallback(() => {
         sheetPlanningRef.current?.dismiss();
@@ -46,12 +69,10 @@ const Page = () => {
     const handleBottomSheetPlanningIsShowingDismiss = useCallback(() => {
         sheetPlanningIsShowingRef.current?.dismiss();
     }, []);
-    const openBottomSheetImageBounding = useCallback(() => {
-        sheetImageBoundingBoxRef.current?.expand();
+    const handleBottomSheetAvailableDismiss = useCallback(() => {
+        sheetPlanningAvailableRef.current?.dismiss();
     }, []);
-    const handleBottomImageBoundingDismiss = useCallback(() => {
-        sheetImageBoundingBoxRef.current?.dismiss();
-    }, []);
+
     const handleOpacityChange = useCallback((value: number) => {
         setOpacity(Number(value.toFixed(1)));
     }, []);
@@ -60,7 +81,9 @@ const Page = () => {
     useEffect(() => {
         doSetPlanningRef(sheetPlanningIsShowingRef);
         doSetGlobalPlanningRef(sheetPlanningRef);
-    }, [sheetPlanningRef, sheetPlanningIsShowingRef]);
+        doSetBoundingBoxRef(sheetImageBoundingBoxRef);
+        doSetPlanningAvailableRef(sheetPlanningAvailableRef);
+    }, [sheetPlanningRef, sheetPlanningIsShowingRef, sheetPlanningAvailableRef]);
     const [open, setOpen] = useState<boolean>(false);
     return (
         <View className="flex-1 justify-center items-center relative">
@@ -107,85 +130,110 @@ const Page = () => {
                     </Button>
                 </ScrollView>
             </View>
-            {listImageBoundingBox && listImageBoundingBox.length !== 0 && (
-                <View className="rounded-md p-1 bg-white absolute top-2 left-16">
-                    <TouchableOpacity onPress={openBottomSheetImageBounding} className='relative'>
-                        <Image
-                            PlaceholderContent={<ActivityIndicator/>}
-                            style={{
-                                width: 32,
-                                height: 32,
-                            }}
-                            source={{ uri: listImageBoundingBox[0].imageHttp }}
-                        />
-                    </TouchableOpacity>
+            {/* Absolute Box top left */}
+            <View className="rounded-md p-2 flex flex-row absolute gap-2 top-1 left-1">
+                <View className="rounded-md p-2 bg-white">
+                    <Tooltip
+                        visible={open}
+                        onOpen={() => setOpen(true)}
+                        onClose={() => {
+                            setOpen(false);
+                        }}
+                        overlayColor={'transparent'}
+                        backgroundColor={'white'}
+                        height={90}
+                        width={120}
+                        popover={
+                            <View className="w-full">
+                                <Text className="ml-2 font-medium">Kiểu bản đồ</Text>
+                                <TouchableOpacity
+                                    onPress={() => {
+                                        DoSetMapType('standard');
+                                        setOpen(false);
+                                    }}
+                                    className="flex mt-2 items-center gap-3 flex-row"
+                                >
+                                    <CheckBox
+                                        containerStyle={{
+                                            backgroundColor: 'transparent',
+                                            borderWidth: 0,
+                                            padding: 0,
+                                            margin: 0,
+                                        }}
+                                        className="w-0"
+                                        checked={mapType === 'standard'}
+                                        checkedColor="green"
+                                        checkedIcon="dot-circle-o"
+                                        size={20}
+                                        uncheckedIcon="circle-o"
+                                    />
+                                    <Text>Mặc định</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    onPress={() => {
+                                        setOpen(false);
+                                        DoSetMapType('hybrid');
+                                    }}
+                                    className="flex mt-2 items-center gap-3 flex-row"
+                                >
+                                    <CheckBox
+                                        containerStyle={{
+                                            backgroundColor: 'transparent',
+                                            borderWidth: 0,
+                                            padding: 0,
+                                            margin: 0,
+                                        }}
+                                        className="w-0"
+                                        checkedColor="green"
+                                        checked={mapType === 'hybrid'}
+                                        checkedIcon="dot-circle-o"
+                                        size={20}
+                                        uncheckedIcon="circle-o"
+                                    />
+                                    <Text>Vệ tinh</Text>
+                                </TouchableOpacity>
+                            </View>
+                        }
+                    >
+                        <Feather name="layers" size={24} color="black" />
+                    </Tooltip>
                 </View>
-            )}
-            <View className="rounded-md p-2 bg-white absolute top-2 left-3">
-                <Tooltip
-                    visible={open}
-                    onOpen={() => setOpen(true)}
-                    onClose={() => {
-                        setOpen(false);
-                    }}
-                    overlayColor={'transparent'}
-                    backgroundColor={'white'}
-                    height={90}
-                    width={120}
-                    popover={
-                        <View className="w-full">
-                            <Text className="ml-2 font-medium">Kiểu bản đồ</Text>
-                            <TouchableOpacity
-                                onPress={() => {
-                                    DoSetMapType('standard');
-                                    setOpen(false);
+                {listImageBoundingBox && listImageBoundingBox.length !== 0 && (
+                    <View className={`rounded-md p-1 bg-white`}>
+                        <TouchableOpacity
+                            onPress={openBottomSheetImageBounding}
+                            className="relative"
+                        >
+                            <Image
+                                PlaceholderContent={<ActivityIndicator />}
+                                style={{
+                                    width: 32,
+                                    height: 32,
                                 }}
-                                className="flex mt-2 items-center gap-3 flex-row"
-                            >
-                                <CheckBox
-                                    containerStyle={{
-                                        backgroundColor: 'transparent',
-                                        borderWidth: 0,
-                                        padding: 0,
-                                        margin: 0,
-                                    }}
-                                    className="w-0"
-                                    checked={mapType === 'standard'}
-                                    checkedColor="green"
-                                    checkedIcon="dot-circle-o"
-                                    size={20}
-                                    uncheckedIcon="circle-o"
-                                />
-                                <Text>Mặc định</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                onPress={() => {
-                                    setOpen(false);
-                                    DoSetMapType('hybrid');
+                                source={{
+                                    uri: listImageBoundingBox
+                                        ? listImageBoundingBox[0].imageHttp
+                                        : 'https://thoquangphat.vn/wp-content/uploads/2024/01/nha-2-tang-1-tum.jpg',
                                 }}
-                                className="flex mt-2 items-center gap-3 flex-row"
-                            >
-                                <CheckBox
-                                    containerStyle={{
-                                        backgroundColor: 'transparent',
-                                        borderWidth: 0,
-                                        padding: 0,
-                                        margin: 0,
-                                    }}
-                                    className="w-0"
-                                    checkedColor="green"
-                                    checked={mapType === 'hybrid'}
-                                    checkedIcon="dot-circle-o"
-                                    size={20}
-                                    uncheckedIcon="circle-o"
-                                />
-                                <Text>Vệ tinh</Text>
-                            </TouchableOpacity>
-                        </View>
-                    }
+                            />
+                        </TouchableOpacity>
+                    </View>
+                )}
+                <TouchableOpacity
+                    onPress={openBottomSheetAvailable}
+                    className="rounded-md p-1 bg-white"
                 >
-                    <Feather name="layers" size={24} color="black" />
-                </Tooltip>
+                    <Image
+                        PlaceholderContent={<ActivityIndicator />}
+                        style={{
+                            width: 32,
+                            height: 32,
+                        }}
+                        source={{
+                            uri: 'https://sotnmt.tayninh.gov.vn/uploads/page/qhsddhoathanh.jpg',
+                        }}
+                    />
+                </TouchableOpacity>
             </View>
             <View className="absolute bottom-[115px] right-[-40px] rotate-[-90deg]">
                 <Slider
@@ -206,6 +254,10 @@ const Page = () => {
             </View>
 
             {/* <BottomSheet dismiss={dismiss} ref={sheetRef} /> */}
+            <BottomSheetPlanningAvailable
+                ref={sheetPlanningAvailableRef}
+                dismiss={handleBottomSheetAvailableDismiss}
+            />
             <BottomSheetImage
                 dismiss={handleBottomImageBoundingDismiss}
                 ref={sheetImageBoundingBoxRef}

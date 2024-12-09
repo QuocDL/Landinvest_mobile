@@ -282,45 +282,48 @@ const BottomSheetShowing = forwardRef<Ref, { dismiss: () => void }>((props, ref)
                                 ></View>
                             }
                             keyExtractor={(item, index) => index.toString()}
-                            renderItem={({ item }) => (
-                                <TouchableOpacity
-                                    className={`flex flex-row items-center pr-3 h-20 rounded border-[1px] border-[#777777] ${
-                                        listImagePlanning?.includes(item.huyen_image)
-                                            ? `bg-green-500`
-                                            : 'bg-white'
-                                    }`}
-                                    activeOpacity={1}
-                                    onPress={() => handleChoosePlanning(item)}
-                                >
-                                    <Image
-                                        source={require('@/assets/images/quyhoach.png')}
-                                        className="h-full w-20 bg-contain rounded-sm"
-                                    />
-                                    <Text className={`flex-1 font-medium ml-2 text-base`}>
-                                        {item.description}
-                                        {' | '}
-                                        {item.id_quyhoach || item.id + ' - ' + item.idDistrict}
-                                    </Text>
-                                    <View>
-                                        <TouchableOpacity
-                                            onPress={() =>
-                                                onPressGoToLocation(
-                                                    item.location
-                                                        ? item.location
-                                                        : item.boundingbox,
-                                                )
-                                            }
-                                            className="bg-slate-200 py-1.5 px-2 rounded-full"
-                                        >
-                                            <FontAwesome
-                                                name="location-arrow"
-                                                size={18}
-                                                color="black"
-                                            />
-                                        </TouchableOpacity>
-                                    </View>
-                                </TouchableOpacity>
-                            )}
+                            renderItem={({ item }) => {
+                                const result = item.id || item.id_quyhoach ? item.id_quyhoach || item.id + ' - ' : ''
+                                return (
+                                    <TouchableOpacity
+                                        className={`flex flex-row items-center pr-3 h-20 rounded border-[1px] border-[#777777] ${
+                                            listImagePlanning?.includes(item.huyen_image)
+                                                ? `bg-green-500`
+                                                : 'bg-white'
+                                        }`}
+                                        activeOpacity={1}
+                                        onPress={() => handleChoosePlanning(item)}
+                                    >
+                                        <Image
+                                            source={{uri: 'https://sotnmt.tayninh.gov.vn/uploads/page/qhsddhoathanh.jpg'}}
+                                            className="h-full w-20 bg-contain rounded-sm"
+                                        />
+                                        <Text className={`flex-1 font-medium ml-2 text-base`}>
+                                            {item.description}
+                                            {' | '}
+                                            {result}{item.idDistrict}
+                                        </Text>
+                                        <View>
+                                            <TouchableOpacity
+                                                onPress={() =>
+                                                    onPressGoToLocation(
+                                                        item.location
+                                                            ? item.location
+                                                            : item.boundingbox,
+                                                    )
+                                                }
+                                                className="bg-slate-200 py-1.5 px-2 rounded-full"
+                                            >
+                                                <FontAwesome
+                                                    name="location-arrow"
+                                                    size={18}
+                                                    color="black"
+                                                />
+                                            </TouchableOpacity>
+                                        </View>
+                                    </TouchableOpacity>
+                                );
+                            }}
                         />
                     </View>
                 )}

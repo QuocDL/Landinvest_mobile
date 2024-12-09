@@ -55,7 +55,7 @@ export interface QuyHoachResponse {
     huyen_image: string;
     idDistrict: number;
     idProvince: number;
-    id_quyhoach: number;
+    id_quyhoach?: number;
     ten_quan?: string;
     id?: number;
     location: string;

@@ -2,7 +2,6 @@ import { CheckpointsIcon, RecyclebinIcon } from '@/assets/icons';
 import { LocationData, QuyHoachResponse } from '@/constants/interface';
 import { PlanningServices } from '@/service/PlanningServices';
 import { usePlanningStore } from '@/store/planningStore';
-import useMarkerStore from '@/store/quyhoachStore';
 import useRefStore from '@/store/refStore';
 import useSearchStore from '@/store/searchStore';
 import { getCenterOfBoundingBoxes } from '@/utils/GetCenterOfBoundingBox';
@@ -16,13 +15,18 @@ import React, { memo, useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
-    Dimensions,
     Image,
     StyleSheet,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
-import MapView, { ClickEvent, MapPressEvent, Marker, Region, UrlTile } from 'react-native-maps';
+import MapView, {
+    ClickEvent,
+    MapPressEvent,
+    Marker,
+    Region,
+    UrlTile
+} from 'react-native-maps';
 type IMapsPropsType = {
     setLocationInfo: (data: LocationData) => void;
     opacity: number;
@@ -50,13 +54,13 @@ const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
     } = useSearchStore((state) => state);
     const listImagePlanning = usePlanningStore((state) => state.listPlanningImage);
     const listImageBoundingBox = usePlanningStore((state) => state.boundingBoxImage);
+    const BottomImageBoundingBoxRef = useRefStore(state=> state.sheetImageBoundingRef)
     // Store Dispatch
-    const doSetDistrictId = useSearchStore((state) => state.doSetDistrictId);
-    const doRemovePlanningList = useMarkerStore((state) => state.doRemovePlanningList);
     const doAddPlanningList = usePlanningStore((state) => state.doAddListPlanningTree);
     const doChangeImagePlanning = usePlanningStore((state) => state.changeImagePlanning);
     const doDoublePressSetPlanning = usePlanningStore((state) => state.doDoublePressAddPlanning);
     const doSetListImageBoundingBox = usePlanningStore((state) => state.doSetListImageBoudingBox);
+    const doSetListPlaningAvailable = usePlanningStore((state)=> state.doSetListPlaningAvailable)
     // MapState
     const [imagePlanning, setImagePlanning] = useState<string[] | null>(null);
     const [location, setLocation] = useState({
@@ -79,14 +83,19 @@ const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
 
         if (mapRef.current) {
             const data = await addressForCoordinate(latitude, longitude);
-            if (latitudeDelta < 0.065) {
-                const boudingBox = await mapRef.current.getMapBoundaries();
+            const boudingBox = await mapRef.current.getMapBoundaries();
                 const params = [
                     boudingBox.southWest.longitude,
                     boudingBox.southWest.latitude,
                     boudingBox.northEast.longitude,
                     boudingBox.northEast.latitude,
                 ];
+            if(latitudeDelta < 0.085){
+                const boundingBoxPlanningData = await PlanningServices.getPlanningAvailableByBoundingBox(params)
+                doSetListPlaningAvailable(boundingBoxPlanningData.list_image)
+            }
+            if (latitudeDelta < 0.065) {
+                
                 const boudingBoxImageData = await PlanningServices.getListImagesByBoundingBox(
                     params,
                 );
@@ -244,6 +253,9 @@ const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
             console.log(error);
         }
     };
+    const onPressMarker = ()=>{
+        BottomImageBoundingBoxRef?.current?.expand()
+    }
     // useEffect funtion state global
     useEffect(() => {
         if (lat !== 0 && lon !== 0) {
@@ -261,11 +273,11 @@ const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
                     latitudeDelta:
                         latDeltaGlobal && latDeltaGlobal < 0.13527821510000138
                             ? (latDeltaGlobal as number)
-                            : 0.13527821510000138,
+                            : 0.13227821510000138,
                     longitudeDelta:
                         lonDeltaGlobal && lonDeltaGlobal < 0.0966010987000061
                             ? (latDeltaGlobal as number)
-                            : 0.0966010987000061,
+                            : 0.0936010987000061,
                 });
             }
         }
@@ -276,6 +288,7 @@ const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
     return (
         <>
             <MapView
+                key={'unique_mapview'}
                 ref={mapRef}
                 style={styles.map}
                 initialRegion={{
@@ -305,6 +318,7 @@ const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
                         };
                         return (
                             <Marker
+                                onPress={()=> onPressMarker()}
                                 key={index}
                                 zIndex={5}
                                 icon={undefined}
@@ -321,7 +335,7 @@ const Map = ({ opacity, setLocationInfo }: IMapsPropsType) => {
                             urlTemplate={`${item}/{z}/{x}/{y}`}
                             maximumZ={25}
                             opacity={opacity}
-                            maximumNativeZ={18}
+                            maximumNativeZ={16}
                             zIndex={-2}
                         />
                     ))}

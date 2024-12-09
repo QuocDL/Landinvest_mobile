@@ -6,7 +6,7 @@ export interface IPlanningResponse {
     huyen_image: string;
     idDistrict: number;
     idProvince: number;
-    id_quyhoach: number;
+    id_quyhoach?: number;
     id?: number;
     ten_quan?: string;
     location: string;
@@ -30,3 +30,14 @@ export interface IResponseGetDistrictId {
     provinces: number;
     status: number;
 }
+
+export interface IPlanningAvailable {
+    boundingbox: string;
+    coordation: string;
+    description: string;
+    idDistrict: number;
+    idProvince: number;
+    image: string;
+    imageHttp: string;
+    location: string;
+  }

@@ -1,32 +1,44 @@
-import Colors from '@/constants/Colors';
-import { QuyHoachResponse } from '@/constants/interface';
-import { usePlanningStore } from '@/store/planningStore';
-import useSearchStore from '@/store/searchStore';
+import React, { forwardRef, useCallback, useEffect, useRef, useState } from 'react';
+import {
+    ActivityIndicator,
+    FlatList,
+    Text,
+    TouchableOpacity,
+    View,
+    Dimensions,
+    Linking,
+} from 'react-native';
+import { Image } from '@rneui/themed';
 import { FontAwesome } from '@expo/vector-icons';
 import BottomSheet, {
     BottomSheetBackdrop,
     BottomSheetModal,
     BottomSheetView,
 } from '@gorhom/bottom-sheet';
-import { Image } from '@rneui/themed';
-import React, { forwardRef, useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, Text, TouchableOpacity, View } from 'react-native';
+import Colors from '@/constants/Colors';
+import { usePlanningStore } from '@/store/planningStore';
+import useSearchStore from '@/store/searchStore';
 import ImageView from 'react-native-image-viewing';
+import { getIdVideoYoutube } from '@/utils/GetIdVideoYoutube';
 
 export type Ref = BottomSheetModal;
-type IListPlanning = {
-    name: string;
-    planning: QuyHoachResponse[];
+type IListImageItem = {
+    imageHttp: string;
+    loai_anh: string;
+    location: string;
 };
 
 const BottomSheetImage = forwardRef<Ref, { dismiss: () => void }>((props, ref) => {
-    const typeImage = ['FLYCAM', '360'];
+    const [allTypeInList, setAllTypeInList] = useState<string[]>([]);
+    const [currentType, setCurrentType] = useState<string>();
     const listImageBoundingBox = usePlanningStore((state) => state.boundingBoxImage);
     const doSetSearchResult = useSearchStore((state) => state.doSetSearchResult);
-
-    // State để kiểm soát modal ảnh fullscreen
+    const [listImage, setListImage] = useState<IListImageItem[] | null>(null);
     const [isImageViewerVisible, setIsImageViewerVisible] = useState(false);
     const [currentImage, setCurrentImage] = useState<string | null>(null);
+
+    // Ref for FlatList
+    const flatRef = useRef<FlatList<IListImageItem>>(null);
 
     const handleGoToLocation = (location: string) => {
         const locationArr = location.split(',');
@@ -45,24 +57,83 @@ const BottomSheetImage = forwardRef<Ref, { dismiss: () => void }>((props, ref) =
         [],
     );
 
-    // Hàm mở ảnh fullscreen
     const openImageViewer = (uri: string) => {
-        setCurrentImage(uri);
+        if (uri !== currentImage) {
+            setCurrentImage(uri);
+        }
         setIsImageViewerVisible(true);
     };
 
-    // Hàm đóng ảnh fullscreen
     const closeImageViewer = () => {
         setIsImageViewerVisible(false);
     };
+
+    const openUrl = (url: string) => {
+        Linking.openURL(url).catch((err) =>
+            console.error('Không thể mở trình duyệt:', err),
+        );
+    };
+
+    useEffect(() => {
+        setListImage(listImageBoundingBox);
+        const priorityOrder = ['FLYCAM', 'ANH_MAT_DAT'];
+        const sortedImages = listImageBoundingBox?.sort((a, b) => {
+            const aPriority = priorityOrder.includes(a.loai_anh) ? 0 : 1;
+            const bPriority = priorityOrder.includes(b.loai_anh) ? 0 : 1;
+            if (aPriority === bPriority) {
+                return 0;
+            }
+            return aPriority - bPriority;
+        });
+        const uniqueTypes = [...new Set(sortedImages?.map((image) => image.loai_anh))];
+        setAllTypeInList(uniqueTypes);
+        setCurrentType(uniqueTypes[0]);
+    }, [listImageBoundingBox]);
+
+    // Filter images based on the current type
+    const filteredImages = listImage?.filter((item) => item.loai_anh === currentType);
 
     return (
         <BottomSheet
             backdropComponent={renderBackdrop}
             ref={ref}
-            snapPoints={['52%', '52%']}
+            snapPoints={['55%', '60%']}
             index={-1}
             enablePanDownToClose
+            handleComponent={() => (
+                <View className="flex flex-col justify-center">
+                    <View className="h-10 pt-2 w-full items-center justify-center rounded-t-2xl ">
+                        <View className="h-1.5 w-12 rounded-full bg-white" />
+                    </View>
+                    <FlatList
+                        horizontal
+                        contentContainerStyle={{
+                            gap: 12,
+                            justifyContent: 'flex-start',
+                        }}
+                        className="mx-2"
+                        data={allTypeInList}
+                        renderItem={({ item }) => (
+                            <TouchableOpacity
+                                activeOpacity={0.8}
+                                onPress={() => setCurrentType(item)}
+                                className={`py-2 p-2 rounded-md ${
+                                    currentType === item ? 'bg-[#4caf50]' : 'bg-white'
+                                }`}
+                            >
+                                <Text
+                                    className={`text-center ${
+                                        currentType === item ? 'text-white' : 'text-black'
+                                    } capitalize`}
+                                >
+                                    {item.replaceAll('_', ' ')}
+                                </Text>
+                            </TouchableOpacity>
+                        )}
+                        keyExtractor={(_, index) => index.toString()}
+                    />
+                </View>
+            )}
             backgroundStyle={{
                 backgroundColor: Colors.primary.header,
             }}
@@ -77,88 +148,128 @@ const BottomSheetImage = forwardRef<Ref, { dismiss: () => void }>((props, ref) =
                             <Text>Chưa có ảnh nào hiển thị</Text>
                         </View>
                     }
-                    data={listImageBoundingBox}
+                    data={filteredImages} // Dữ liệu đã được lọc
                     horizontal
                     showsHorizontalScrollIndicator={false}
-                    className="h-full pt-2 mx-2"
-                    keyExtractor={(item, index) => index.toString()}
+                    style={{
+                        paddingTop: 8,
+                        marginHorizontal: 8,
+                        marginTop: 8,
+                    }}
+                    keyExtractor={(item) => item.imageHttp.toString()}
                     contentContainerStyle={{
                         gap: 12,
                     }}
-                    renderItem={({ item }) => (
-                        <View className="flex flex-row relative items-center">
-                            {item.loai_anh === typeImage[0] && (
-                                <>
+                    getItemLayout={(data, index) => ({
+                        length: 280, // Chiều rộng của mỗi item
+                        offset: 280 * index, // Tính toán offset dựa trên chiều rộng của item
+                        index,
+                    })}
+                    renderItem={({ item }) => {
+                        return (
+                            <View
+                                style={{
+                                    flexDirection: 'row',
+                                    position: 'relative',
+                                    alignItems: 'center',
+                                }}
+                            >
+                                {item.loai_anh === 'FLYCAM' && (
                                     <TouchableOpacity
                                         onPress={() => openImageViewer(item.imageHttp)}
+                                        style={{
+                                            borderWidth: 1,
+                                            borderColor: 'white',
+                                            borderRadius: 6,
+                                            overflow: 'hidden',
+                                        }}
                                     >
                                         <Image
                                             style={{
                                                 width: 280,
                                                 height: 280,
                                             }}
-                                            className="border-[1px] border-white rounded-md overflow-hidden"
+                                            containerStyle={{}}
                                             source={{ uri: item.imageHttp }}
                                             PlaceholderContent={<ActivityIndicator />}
-                                            placeholderStyle={{
-                                                borderRadius: 6,
-                                            }}
+                                            placeholderStyle={{ borderRadius: 6 }}
                                             resizeMode="cover"
                                         />
                                     </TouchableOpacity>
-                                    <TouchableOpacity
-                                        onPress={() => handleGoToLocation(item.location)}
-                                        className="bg-white flex flex-row gap-2 items-center rounded-md bottom-8 right-3 p-1.5 absolute"
-                                    >
-                                        <Text className="text-base">Đi tới</Text>
-                                        <FontAwesome
-                                            name="location-arrow"
-                                            size={16}
-                                            color="black"
-                                        />
-                                    </TouchableOpacity>
-                                    <ImageView
-                                        images={[{ uri: currentImage as string }]}
-                                        imageIndex={0}
-                                        visible={isImageViewerVisible}
-                                        onRequestClose={closeImageViewer}
-                                    />
-                                </>
-                            )}
-                            {item.loai_anh === typeImage[1] && (
-                                <>
-                                    <Image
+                                )}
+                                {item.loai_anh === '360' && (
+                                    <View
+                                        className="flex flex-col items-center justify-center"
                                         style={{
+                                            borderWidth: 1,
+                                            borderColor: 'white',
+                                            borderRadius: 6,
+                                            overflow: 'hidden',
                                             width: 280,
                                             height: 280,
                                         }}
-                                        className="border-[1px] border-white rounded-md overflow-hidden"
-                                        source={{ uri: item.imageHttp }}
-                                        PlaceholderContent={<ActivityIndicator />}
-                                        placeholderStyle={{
-                                            borderRadius: 6,
-                                        }}
-                                        resizeMode="cover"
-                                    />
-                                    <TouchableOpacity
-                                        onPress={() => handleGoToLocation(item.location)}
-                                        className="bg-white flex flex-row gap-2 items-center rounded-md bottom-8 right-3 p-1.5 absolute"
                                     >
-                                        <Text className="text-base">Đi tới</Text>
-                                        <FontAwesome
-                                            name="location-arrow"
-                                            size={16}
-                                            color="black"
-                                        />
-                                    </TouchableOpacity>
-                                </>
-                            )}
-                        </View>
-                    )}
+                                        <Text className="text-white">Chưa hỗ trợ xem trên APP</Text>
+                                        <TouchableOpacity
+                                            onPress={() => openUrl('https://quyhoach.xyz')}
+                                            className="flex flex-row item-center"
+                                        >
+                                            <Text className="text-white">Truy cập: </Text>
+                                            <Text className="text-[#4caf50]">quyhoach.xyz</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
+                                {item.loai_anh === 'VIDEO_FLYCAM' &&
+                                    item.imageHttp.includes('youtu') && (
+                                        <TouchableOpacity
+                                            onPress={() => openUrl(item.imageHttp)}
+                                            className="flex flex-row item-center"
+                                            style={{
+                                                borderWidth: 1,
+                                                borderColor: 'white',
+                                                borderRadius: 6,
+                                                overflow: 'hidden',
+                                                width: 280,
+                                                height: 280,
+                                            }}
+                                        >
+                                            <Image
+                                                source={{
+                                                    uri: getIdVideoYoutube(item.imageHttp)
+                                                }}
+                                                style={{
+                                                    width: 280,
+                                                    height: 280,
+                                                }}
+                                            />
+                                        </TouchableOpacity>
+                                    )}
+                                <TouchableOpacity
+                                    onPress={() => handleGoToLocation(item.location)}
+                                    className="px-2.5 py-2 rounded-full"
+                                    style={{
+                                        backgroundColor: 'white',
+                                        flexDirection: 'row',
+                                        gap: 8,
+                                        alignItems: 'center',
+                                        position: 'absolute',
+                                        bottom: 6,
+                                        right: 8,
+                                    }}
+                                >
+                                    <FontAwesome name="location-arrow" size={24} color="green" />
+                                </TouchableOpacity>
+                                <ImageView
+                                    images={[{ uri: currentImage as string }]}
+                                    imageIndex={0}
+                                    visible={isImageViewerVisible}
+                                    onRequestClose={closeImageViewer}
+                                />
+                            </View>
+                        );
+                    }}
                 />
             </BottomSheetView>
-
-            {/* Modal xem ảnh fullscreen */}
         </BottomSheet>
     );
 });
